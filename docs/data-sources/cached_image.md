@@ -39,10 +39,26 @@ resource "docker_container" "container" {
 
 ### Optional
 
+- `base_image_cache_dir` (String) TODO
+- `build_context_path` (String) TODO
 - `cache_ttl_days` (Number) The number of days to use cached layers before expiring them. Defaults to 7 days.
+- `devcontainer_dir` (String) TODO
+- `devcontainer_json_path` (String) TODO
+- `docker_config_base64` (String) TODO
+- `dockerfile_path` (String) TODO
+- `exit_on_build_failure` (Boolean) TODO
 - `extra_env` (Map of String) Extra environment variables to set for the container. This may include evbuilder options.
+- `fallback_image` (String) TODO
+- `git_clone_depth` (Number) TODO
+- `git_clone_single_branch` (Boolean) TODO
+- `git_http_proxy_url` (String) TODO
 - `git_password` (String, Sensitive) The password to use for Git authentication. This is optional.
+- `git_ssh_private_key_path` (String) TODO
 - `git_username` (String) The username to use for Git authentication. This is optional.
+- `ignore_paths` (List of String) TODO
+- `insecure` (Boolean) TODO
+- `ssl_cert_base64` (String) TODO
+- `verbose` (Boolean) Enable verbose output.
 
 ### Read-Only
 
