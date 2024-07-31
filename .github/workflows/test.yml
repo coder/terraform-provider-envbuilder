@@ -81,6 +81,7 @@ jobs:
           terraform_version: ${{ matrix.terraform }}
           terraform_wrapper: false
       - run: go mod download
+      - run: make test-registry
       - env:
           TF_ACC: "1"
         run: go test -v -cover ./internal/provider/
