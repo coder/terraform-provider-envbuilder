@@ -83,7 +83,10 @@ func setup(ctx context.Context, t testing.TB, files map[string]string) testDepen
 			"ENVBUILDER_DEVCONTAINER_DIR=" + repoDir,
 			"ENVBUILDER_EXIT_ON_BUILD_FAILURE=true",
 			"ENVBUILDER_INIT_SCRIPT=exit",
-			"ENVBUILDER_PUSH_IMAGE=true",
+			// FIXME: Enabling this options causes envbuilder to add its binary to the image under the path
+			// /.envbuilder/bin/envbuilder. This file will have ownership root:root and permissions 0o755.
+			// Because of this, t.Cleanup() will be unable to delete the temp dir, causing the test to fail.
+			// "ENVBUILDER_PUSH_IMAGE=true",
 		},
 		Labels: map[string]string{
 			testContainerLabel: "true",

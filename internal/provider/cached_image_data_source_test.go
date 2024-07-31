@@ -18,7 +18,7 @@ func TestAccCachedImageDataSource(t *testing.T) {
 	t.Cleanup(cancel)
 	files := map[string]string{
 		"devcontainer.json": `{"build": { "dockerfile": "Dockerfile" }}`,
-		"Dockerfile": `FROM ubuntu:latest
+		"Dockerfile": `FROM localhost:5000/test-ubuntu:latest
 	RUN apt-get update && apt-get install -y cowsay`,
 	}
 	deps := setup(ctx, t, files)
@@ -52,8 +52,10 @@ func TestAccCachedImageDataSource(t *testing.T) {
 					resource.TestCheckResourceAttr("data.envbuilder_cached_image.test", "exists", "true"),
 					resource.TestCheckResourceAttrSet("data.envbuilder_cached_image.test", "image"),
 					resource.TestCheckResourceAttrWith("data.envbuilder_cached_image.test", "image", func(value string) error {
+						// value is enclosed in quotes
+						value = strings.Trim(value, `"`)
 						if !strings.HasPrefix(value, deps.CacheRepo) {
-							return fmt.Errorf("expected prefix %q", deps.CacheRepo)
+							return fmt.Errorf("expected image %q to have prefix %q", value, deps.CacheRepo)
 						}
 						return nil
 					}),
