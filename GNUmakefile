@@ -17,3 +17,8 @@ build: terraform-provider-envbuilder
 
 terraform-provider-envbuilder: internal/provider/*.go main.go
 	CGO_ENABLED=0 go build .
+
+.PHONY: update-envbuilder-version
+update-envbuilder-version:
+	go get github.com/coder/envbuilder@main
+	go mod tidy

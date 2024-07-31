@@ -291,7 +291,7 @@ func (d *CachedImageDataSource) Read(ctx context.Context, req datasource.ReadReq
 		InitArgs:            "",
 		InitCommand:         "",
 		InitScript:          "",
-		LayerCacheDir:       "", // This will be ignored, as we are exclusively using the cache repo.
+		LayerCacheDir:       "",
 		PostStartScriptPath: "",
 		PushImage:           false,
 		SetupScript:         "",
@@ -314,8 +314,8 @@ func (d *CachedImageDataSource) Read(ctx context.Context, req datasource.ReadReq
 
 	// TODO(mafredri): Implement the actual data source read logic.
 	data.ID = types.StringValue("cached-image-id")
-	data.Exists = types.BoolValue(false)
-	data.Image = data.BuilderImage
+	data.Exists = types.BoolValue(true)
+	data.Image = types.StringValue(fmt.Sprintf("%s@%s", data.CacheRepo, digest.String()))
 
 	// Compute the env attribute from the config map.
 	// TODO(mafredri): Convert any other relevant attributes given via schema.
