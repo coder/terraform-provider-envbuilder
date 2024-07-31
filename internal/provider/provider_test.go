@@ -41,19 +41,6 @@ func testAccPreCheck(t *testing.T) {
 	// function.
 }
 
-// envs turns a map[string]string of envs to a slice of string in the form k1=v1,k2=v2,...
-func envs(m map[string]string) (ss []string) {
-	var sb strings.Builder
-	for k, v := range m {
-		_, _ = sb.WriteString(k)
-		_, _ = sb.WriteRune('=')
-		_, _ = sb.WriteString(v)
-		ss = append(ss, sb.String())
-		sb.Reset()
-	}
-	return ss
-}
-
 type testDependencies struct {
 	BuilderImage string
 	RepoDir      string

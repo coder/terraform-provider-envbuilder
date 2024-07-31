@@ -337,7 +337,7 @@ func (d *CachedImageDataSource) Read(ctx context.Context, req datasource.ReadReq
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
-// tfLogFunc is an adapter to envbuilder/log.Func
+// tfLogFunc is an adapter to envbuilder/log.Func.
 func tfLogFunc(ctx context.Context) eblog.Func {
 	return func(level eblog.Level, format string, args ...any) {
 		var logFn func(context.Context, string, ...map[string]interface{})
