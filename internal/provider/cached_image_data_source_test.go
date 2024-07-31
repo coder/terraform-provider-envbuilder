@@ -13,6 +13,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
+// TODO: change this to only test for a non-existent image.
+// Move the heavy lifting to integration/
 func TestAccCachedImageDataSource(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	t.Cleanup(cancel)
