@@ -7,10 +7,12 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"net/http/httptest"
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -19,6 +21,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
 	"github.com/stretchr/testify/require"
 )
@@ -62,6 +65,7 @@ func setup(ctx context.Context, t testing.TB, files map[string]string) testDepen
 	envbuilderImage := getEnvOrDefault("ENVBUILDER_IMAGE", "ghcr.io/coder/envbuilder-preview")
 	envbuilderVersion := getEnvOrDefault("ENVBUILDER_VERSION", "latest")
 	refStr := envbuilderImage + ":" + envbuilderVersion
+	ensureImage(ctx, t, cli, refStr)
 	// Run envbuilder using this dir as a local layer cache
 	ctr, err := cli.ContainerCreate(ctx, &container.Config{
 		Image: refStr,
@@ -151,4 +155,23 @@ func runLocalRegistry(t testing.TB) string {
 	regSrvURL, err := url.Parse(regSrv.URL)
 	require.NoError(t, err)
 	return fmt.Sprintf("localhost:%s/test", regSrvURL.Port())
+}
+
+func ensureImage(ctx context.Context, t testing.TB, cli *client.Client, ref string) {
+	t.Helper()
+
+	t.Logf("ensuring image %q", ref)
+	images, err := cli.ImageList(ctx, image.ListOptions{})
+	require.NoError(t, err, "list images")
+	for _, img := range images {
+		if slices.Contains(img.RepoTags, ref) {
+			t.Logf("image %q found locally, not pulling", ref)
+			return
+		}
+	}
+	t.Logf("image %s not found locally, attempting to pull", ref)
+	resp, err := cli.ImagePull(ctx, ref, image.PullOptions{})
+	require.NoError(t, err)
+	_, err = io.ReadAll(resp)
+	require.NoError(t, err)
 }
