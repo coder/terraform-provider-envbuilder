@@ -13,9 +13,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/coder/terraform-provider-envbuilder/testutil/registrytest"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
-	"github.com/mafredri/terraform-provider-envbuilder/testutil/registrytest"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
