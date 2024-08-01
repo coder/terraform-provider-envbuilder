@@ -15,8 +15,7 @@ import (
 // It will store data in dir.
 func New(t testing.TB, dir string) string {
 	t.Helper()
-	tempDir := t.TempDir()
-	regHandler := registry.New(registry.WithBlobHandler(registry.NewDiskBlobHandler(tempDir)))
+	regHandler := registry.New(registry.WithBlobHandler(registry.NewDiskBlobHandler(dir)))
 	regSrv := httptest.NewServer(regHandler)
 	t.Cleanup(func() { regSrv.Close() })
 	regSrvURL, err := url.Parse(regSrv.URL)
