@@ -6,19 +6,16 @@ package provider
 import (
 	"bufio"
 	"context"
-	"fmt"
 	"io"
-	"net/http/httptest"
-	"net/url"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
 
-	"github.com/google/go-containerregistry/pkg/registry"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
+	"github.com/mafredri/terraform-provider-envbuilder/testutil/registrytest"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
@@ -60,15 +57,15 @@ func setup(t testing.TB, files map[string]string) testDependencies {
 	// TODO: envbuilder creates /.envbuilder/bin/envbuilder owned by root:root which we are unable to clean up.
 	// This causes tests to fail.
 	repoDir := t.TempDir()
-	cacheRepo := runLocalRegistry(t)
+	regDir := t.TempDir()
+	reg := registrytest.New(t, regDir)
 	writeFiles(t, files, repoDir)
 	return testDependencies{
 		BuilderImage: envbuilderImageRef,
-		CacheRepo:    cacheRepo,
+		CacheRepo:    reg + "/test",
 		RepoDir:      repoDir,
 	}
 }
-
 
 func seedCache(ctx context.Context, t testing.TB, deps testDependencies) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
@@ -92,7 +89,7 @@ func seedCache(ctx context.Context, t testing.TB, deps testDependencies) {
 			testContainerLabel: "true",
 		}}, &container.HostConfig{
 		NetworkMode: container.NetworkMode("host"),
-		Binds:       []string{deps.RepoDir+ ":" + deps.RepoDir},
+		Binds:       []string{deps.RepoDir + ":" + deps.RepoDir},
 	}, nil, nil, "")
 	require.NoError(t, err, "failed to run envbuilder to seed cache")
 	t.Cleanup(func() {
@@ -148,17 +145,6 @@ func writeFiles(t testing.TB, files map[string]string, destPath string) {
 		require.NoError(t, os.WriteFile(absPath, bs, 0o644))
 		t.Logf("wrote %d bytes to %s", len(bs), absPath)
 	}
-}
-
-func runLocalRegistry(t testing.TB) string {
-	t.Helper()
-	tempDir := t.TempDir()
-	regHandler := registry.New(registry.WithBlobHandler(registry.NewDiskBlobHandler(tempDir)))
-	regSrv := httptest.NewServer(regHandler)
-	t.Cleanup(func() { regSrv.Close() })
-	regSrvURL, err := url.Parse(regSrv.URL)
-	require.NoError(t, err)
-	return fmt.Sprintf("localhost:%s/test", regSrvURL.Port())
 }
 
 func ensureImage(ctx context.Context, t testing.TB, cli *client.Client, ref string) {
