@@ -12,6 +12,7 @@ import (
 
 	kconfig "github.com/GoogleContainerTools/kaniko/pkg/config"
 	"github.com/coder/envbuilder"
+	"github.com/coder/envbuilder/constants"
 	eblog "github.com/coder/envbuilder/log"
 	eboptions "github.com/coder/envbuilder/options"
 	"github.com/go-git/go-billy/v5/osfs"
@@ -36,17 +37,18 @@ type CachedImageDataSource struct {
 
 // CachedImageDataSourceModel describes the data source data model.
 type CachedImageDataSourceModel struct {
+	// Required "inputs".
+	BuilderImage types.String `tfsdk:"builder_image"`
+	CacheRepo    types.String `tfsdk:"cache_repo"`
+	GitURL       types.String `tfsdk:"git_url"`
+	// Optional "inputs".
 	BaseImageCacheDir    types.String `tfsdk:"base_image_cache_dir"`
 	BuildContextPath     types.String `tfsdk:"build_context_path"`
-	BuilderImage         types.String `tfsdk:"builder_image"`
-	CacheRepo            types.String `tfsdk:"cache_repo"`
 	CacheTTLDays         types.Int64  `tfsdk:"cache_ttl_days"`
 	DevcontainerDir      types.String `tfsdk:"devcontainer_dir"`
 	DevcontainerJSONPath types.String `tfsdk:"devcontainer_json_path"`
 	DockerfilePath       types.String `tfsdk:"dockerfile_path"`
 	DockerConfigBase64   types.String `tfsdk:"docker_config_base64"`
-	Env                  types.List   `tfsdk:"env"`
-	Exists               types.Bool   `tfsdk:"exists"`
 	ExitOnBuildFailure   types.Bool   `tfsdk:"exit_on_build_failure"`
 	ExtraEnv             types.Map    `tfsdk:"extra_env"`
 	FallbackImage        types.String `tfsdk:"fallback_image"`
@@ -55,14 +57,16 @@ type CachedImageDataSourceModel struct {
 	GitHTTPProxyURL      types.String `tfsdk:"git_http_proxy_url"`
 	GitPassword          types.String `tfsdk:"git_password"`
 	GitSSHPrivateKeyPath types.String `tfsdk:"git_ssh_private_key_path"`
-	GitURL               types.String `tfsdk:"git_url"`
 	GitUsername          types.String `tfsdk:"git_username"`
-	ID                   types.String `tfsdk:"id"`
 	IgnorePaths          types.List   `tfsdk:"ignore_paths"`
-	Image                types.String `tfsdk:"image"`
 	Insecure             types.Bool   `tfsdk:"insecure"`
 	SSLCertBase64        types.String `tfsdk:"ssl_cert_base64"`
 	Verbose              types.Bool   `tfsdk:"verbose"`
+	// Computed "outputs".
+	Env    types.List   `tfsdk:"env"`
+	Exists types.Bool   `tfsdk:"exists"`
+	ID     types.String `tfsdk:"id"`
+	Image  types.String `tfsdk:"image"`
 }
 
 func (d *CachedImageDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -72,45 +76,111 @@ func (d *CachedImageDataSource) Metadata(ctx context.Context, req datasource.Met
 func (d *CachedImageDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		// This description is used by the documentation generator and the language server.
-		MarkdownDescription: "The cached image data source can be used to retrieve a cached image produced by envbuilder.",
+		MarkdownDescription: "The cached image data source can be used to retrieve a cached image produced by envbuilder. Reading from this data source will clone the specified Git repository, read a Devcontainer specification or Dockerfile, and check for its presence in the provided cache repo.",
 
 		Attributes: map[string]schema.Attribute{
-			"base_image_cache_dir": schema.StringAttribute{
-				MarkdownDescription: "The path to a directory where the base image can be found. This should be a read-only directory solely mounted for the purpose of caching the base image.",
-				Optional:            true,
-			},
-			"build_context_path": schema.StringAttribute{
-				MarkdownDescription: "Can be specified when a DockerfilePath is specified outside the base WorkspaceFolder. This path MUST be relative to the WorkspaceFolder path into which the repo is cloned.",
-				Optional:            true,
-			},
+			// Required "inputs".
 			"builder_image": schema.StringAttribute{
-				MarkdownDescription: "The builder image to use if the cache does not exist.",
+				MarkdownDescription: "The envbuilder image to use if the cached version is not found.",
 				Required:            true,
 			},
 			"cache_repo": schema.StringAttribute{
-				MarkdownDescription: "The name of the container registry to fetch the cache image from.",
+				MarkdownDescription: "(Envbuilder option) The name of the container registry to fetch the cache image from.",
 				Required:            true,
 			},
+			"git_url": schema.StringAttribute{
+				MarkdownDescription: "(Envbuilder option) The URL of a Git repository containing a Devcontainer or Docker image to clone.",
+				Required:            true,
+			},
+			// Optional "inputs".
+			"base_image_cache_dir": schema.StringAttribute{
+				MarkdownDescription: "(Envbuilder option) The path to a directory where the base image can be found. This should be a read-only directory solely mounted for the purpose of caching the base image.",
+				Optional:            true,
+			},
+			"build_context_path": schema.StringAttribute{
+				MarkdownDescription: "(Envbuilder option) Can be specified when a DockerfilePath is specified outside the base WorkspaceFolder. This path MUST be relative to the WorkspaceFolder path into which the repo is cloned.",
+				Optional:            true,
+			},
 			"cache_ttl_days": schema.Int64Attribute{
-				MarkdownDescription: "The number of days to use cached layers before expiring them. Defaults to 7 days.",
+				MarkdownDescription: "(Envbuilder option) The number of days to use cached layers before expiring them. Defaults to 7 days.",
 				Optional:            true,
 			},
 			"devcontainer_dir": schema.StringAttribute{
-				MarkdownDescription: "The path to the folder containing the devcontainer.json file that will be used to build the workspace and can either be an absolute path or a path relative to the workspace folder. If not provided, defaults to `.devcontainer`.",
+				MarkdownDescription: "(Envbuilder option) The path to the folder containing the devcontainer.json file that will be used to build the workspace and can either be an absolute path or a path relative to the workspace folder. If not provided, defaults to `.devcontainer`.",
 				Optional:            true,
 			},
 			"devcontainer_json_path": schema.StringAttribute{
-				MarkdownDescription: "The path to a devcontainer.json file that is either an absolute path or a path relative to DevcontainerDir. This can be used in cases where one wants to substitute an edited devcontainer.json file for the one that exists in the repo.",
+				MarkdownDescription: "(Envbuilder option) The path to a devcontainer.json file that is either an absolute path or a path relative to DevcontainerDir. This can be used in cases where one wants to substitute an edited devcontainer.json file for the one that exists in the repo.",
 				Optional:            true,
 			},
 			"dockerfile_path": schema.StringAttribute{
-				MarkdownDescription: "The relative path to the Dockerfile that will be used to build the workspace. This is an alternative to using a devcontainer that some might find simpler.",
+				MarkdownDescription: "(Envbuilder option) The relative path to the Dockerfile that will be used to build the workspace. This is an alternative to using a devcontainer that some might find simpler.",
 				Optional:            true,
 			},
 			"docker_config_base64": schema.StringAttribute{
-				MarkdownDescription: "The base64 encoded Docker config file that will be used to pull images from private container registries.",
+				MarkdownDescription: "(Envbuilder option) The base64 encoded Docker config file that will be used to pull images from private container registries.",
 				Optional:            true,
 			},
+			"exit_on_build_failure": schema.BoolAttribute{
+				MarkdownDescription: "(Envbuilder option) Terminates upon a build failure. This is handy when preferring the FALLBACK_IMAGE in cases where no devcontainer.json or image is provided. However, it ensures that the container stops if the build process encounters an error.",
+				Optional:            true,
+			},
+			// TODO(mafredri): Map vs List? Support both?
+			"extra_env": schema.MapAttribute{
+				MarkdownDescription: "Extra environment variables to set for the container. This may include envbuilder options.",
+				ElementType:         types.StringType,
+				Optional:            true,
+			},
+			"fallback_image": schema.StringAttribute{
+				MarkdownDescription: "(Envbuilder option) Specifies an alternative image to use when neither an image is declared in the devcontainer.json file nor a Dockerfile is present. If there's a build failure (from a faulty Dockerfile) or a misconfiguration, this image will be the substitute. Set ExitOnBuildFailure to true to halt the container if the build faces an issue.",
+				Optional:            true,
+			},
+			"git_clone_depth": schema.Int64Attribute{
+				MarkdownDescription: "(Envbuilder option) The depth to use when cloning the Git repository.",
+				Optional:            true,
+			},
+			"git_clone_single_branch": schema.BoolAttribute{
+				MarkdownDescription: "(Envbuilder option) Clone only a single branch of the Git repository.",
+				Optional:            true,
+			},
+			"git_http_proxy_url": schema.StringAttribute{
+				MarkdownDescription: "(Envbuilder option) The URL for the HTTP proxy. This is optional.",
+				Optional:            true,
+			},
+			"git_password": schema.StringAttribute{
+				MarkdownDescription: "(Envbuilder option) The password to use for Git authentication. This is optional.",
+				Sensitive:           true,
+				Optional:            true,
+			},
+			"git_ssh_private_key_path": schema.StringAttribute{
+				MarkdownDescription: "(Envbuilder option) Path to an SSH private key to be used for Git authentication.",
+				Optional:            true,
+			},
+			"git_username": schema.StringAttribute{
+				MarkdownDescription: "(Envbuilder option) The username to use for Git authentication. This is optional.",
+				Optional:            true,
+			},
+
+			"ignore_paths": schema.ListAttribute{
+				MarkdownDescription: "(Envbuilder option) The comma separated list of paths to ignore when building the workspace.",
+				ElementType:         types.StringType,
+				Optional:            true,
+			},
+
+			"insecure": schema.BoolAttribute{
+				MarkdownDescription: "(Envbuilder option) Bypass TLS verification when cloning and pulling from container registries.",
+				Optional:            true,
+			},
+			"ssl_cert_base64": schema.StringAttribute{
+				MarkdownDescription: "(Envbuilder option) The content of an SSL cert file. This is useful for self-signed certificates.",
+				Optional:            true,
+			},
+			"verbose": schema.BoolAttribute{
+				MarkdownDescription: "(Envbuilder option) Enable verbose output.",
+				Optional:            true,
+			},
+
+			// Computed "outputs".
 			// TODO(mafredri): Map vs List? Support both?
 			"env": schema.ListAttribute{
 				MarkdownDescription: "Computed envbuilder configuration to be set for the container.",
@@ -121,73 +191,13 @@ func (d *CachedImageDataSource) Schema(ctx context.Context, req datasource.Schem
 				MarkdownDescription: "Whether the cached image was exists or not for the given config.",
 				Computed:            true,
 			},
-			"exit_on_build_failure": schema.BoolAttribute{
-				MarkdownDescription: "Terminates upon a build failure. This is handy when preferring the FALLBACK_IMAGE in cases where no devcontainer.json or image is provided. However, it ensures that the container stops if the build process encounters an error.",
-				Optional:            true,
-			},
-			// TODO(mafredri): Map vs List? Support both?
-			"extra_env": schema.MapAttribute{
-				MarkdownDescription: "Extra environment variables to set for the container. This may include evbuilder options.",
-				ElementType:         types.StringType,
-				Optional:            true,
-			},
-			"fallback_image": schema.StringAttribute{
-				MarkdownDescription: "Specifies an alternative image to use when neither an image is declared in the devcontainer.json file nor a Dockerfile is present. If there's a build failure (from a faulty Dockerfile) or a misconfiguration, this image will be the substitute. Set ExitOnBuildFailure to true to halt the container if the build faces an issue.",
-				Optional:            true,
-			},
-			"git_clone_depth": schema.Int64Attribute{
-				MarkdownDescription: "The depth to use when cloning the Git repository.",
-				Optional:            true,
-			},
-			"git_clone_single_branch": schema.BoolAttribute{
-				MarkdownDescription: "Clone only a single branch of the Git repository.",
-				Optional:            true,
-			},
-			"git_http_proxy_url": schema.StringAttribute{
-				MarkdownDescription: "The URL for the HTTP proxy. This is optional.",
-				Optional:            true,
-			},
-			"git_password": schema.StringAttribute{
-				MarkdownDescription: "The password to use for Git authentication. This is optional.",
-				Sensitive:           true,
-				Optional:            true,
-			},
-			"git_ssh_private_key_path": schema.StringAttribute{
-				MarkdownDescription: "Path to an SSH private key to be used for Git authentication.",
-				Optional:            true,
-			},
-			"git_username": schema.StringAttribute{
-				MarkdownDescription: "The username to use for Git authentication. This is optional.",
-				Optional:            true,
-			},
-			"git_url": schema.StringAttribute{
-				MarkdownDescription: "The URL of a Git repository containing a Devcontainer or Docker image to clone.",
-				Required:            true,
-			},
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Cached image identifier. This will generally be the image's SHA256 digest.",
 				Computed:            true,
 			},
-			"ignore_paths": schema.ListAttribute{
-				MarkdownDescription: "The comma separated list of paths to ignore when building the workspace.",
-				ElementType:         types.StringType,
-				Optional:            true,
-			},
 			"image": schema.StringAttribute{
-				MarkdownDescription: "Outputs the cached image URL if it exists, otherwise the builder image URL as output instead.",
+				MarkdownDescription: "Outputs the cached image repo@digest if it exists, and builder image otherwise.",
 				Computed:            true,
-			},
-			"insecure": schema.BoolAttribute{
-				MarkdownDescription: "Bypass TLS verification when cloning and pulling from container registries.",
-				Optional:            true,
-			},
-			"ssl_cert_base64": schema.StringAttribute{
-				MarkdownDescription: "The content of an SSL cert file. This is useful for self-signed certificates.",
-				Optional:            true,
-			},
-			"verbose": schema.BoolAttribute{
-				MarkdownDescription: "Enable verbose output.",
-				Optional:            true,
 			},
 		},
 	}
@@ -231,13 +241,13 @@ func (d *CachedImageDataSource) Read(ctx context.Context, req datasource.ReadReq
 	//     return
 	// }
 
-	tmpDir, err := os.MkdirTemp(os.TempDir(), "cached-image-data-source")
+	tmpDir, err := os.MkdirTemp(os.TempDir(), "envbuilder-provider-cached-image-data-source")
 	if err != nil {
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to create temp directory: %s", err.Error()))
 		return
 	}
 	oldKanikoDir := kconfig.KanikoDir
-	tmpKanikoDir := filepath.Join(tmpDir, ".envbuilder")
+	tmpKanikoDir := filepath.Join(tmpDir, constants.MagicDir)
 	// Normally you would set the KANIKO_DIR environment variable, but we are importing kaniko directly.
 	kconfig.KanikoDir = tmpKanikoDir
 	tflog.Info(ctx, "set kaniko dir to "+tmpKanikoDir)
