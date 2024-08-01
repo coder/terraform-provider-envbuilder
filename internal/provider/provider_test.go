@@ -6,6 +6,7 @@ package provider
 import (
 	"bufio"
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -14,17 +15,43 @@ import (
 	"testing"
 
 	"github.com/coder/terraform-provider-envbuilder/testutil/registrytest"
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
+	"github.com/docker/go-connections/nat"
 	"github.com/stretchr/testify/require"
 )
 
 const (
 	testContainerLabel = "terraform-provider-envbuilder-test"
+)
+
+// nolint:gosec // Throw-away key for testing. DO NOT REUSE.
+const (
+	testSSHHostKey = `-----BEGIN OPENSSH PRIVATE KEY-----
+b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW
+QyNTUxOQAAACDBC7DRHALRN3JJrkDQETyL2Vg5O6QsWTE2YWAt9bIZiAAAAKj5O8yU+TvM
+lAAAAAtzc2gtZWQyNTUxOQAAACDBC7DRHALRN3JJrkDQETyL2Vg5O6QsWTE2YWAt9bIZiA
+AAAED9b0qGgjoDx9YiyCHGBE6ogdnD6IbQsgfaFDI0aE+x3cELsNEcAtE3ckmuQNARPIvZ
+WDk7pCxZMTZhYC31shmIAAAAInRlcnJhZm9ybS1wcm92aWRlci1lbnZidWlsZGVyLXRlc3
+QBAgM=
+-----END OPENSSH PRIVATE KEY-----`
+	testSSHHostPubKey = `ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMELsNEcAtE3ckmuQNARPIvZWDk7pCxZMTZhYC31shmI terraform-provider-envbuilder-test`
+	testSSHUserKey    = `-----BEGIN OPENSSH PRIVATE KEY-----
+b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW
+QyNTUxOQAAACCtxz9h0yXzi/HqZBpSkA2xFo28v5W8O4HimI0ZzNpQkwAAAKhv/+X2b//l
+9gAAAAtzc2gtZWQyNTUxOQAAACCtxz9h0yXzi/HqZBpSkA2xFo28v5W8O4HimI0ZzNpQkw
+AAAED/G0HuohvSa8q6NzkZ+wRPW0PhPpo9Th8fvcBQDaxCia3HP2HTJfOL8epkGlKQDbEW
+jby/lbw7geKYjRnM2lCTAAAAInRlcnJhZm9ybS1wcm92aWRlci1lbnZidWlsZGVyLXRlc3
+QBAgM=
+-----END OPENSSH PRIVATE KEY-----`
+	testSSHUserPubKey = `ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIK3HP2HTJfOL8epkGlKQDbEWjby/lbw7geKYjRnM2lCT terraform-provider-envbuilder-test`
 )
 
 // testAccProtoV6ProviderFactories are used to instantiate a provider during
@@ -45,6 +72,8 @@ type testDependencies struct {
 	BuilderImage string
 	RepoDir      string
 	CacheRepo    string
+	GitImage     string
+	SSHDir       string
 }
 
 func setup(t testing.TB, files map[string]string) testDependencies {
@@ -53,6 +82,7 @@ func setup(t testing.TB, files map[string]string) testDependencies {
 	envbuilderImage := getEnvOrDefault("ENVBUILDER_IMAGE", "ghcr.io/coder/envbuilder-preview")
 	envbuilderVersion := getEnvOrDefault("ENVBUILDER_VERSION", "latest")
 	envbuilderImageRef := envbuilderImage + ":" + envbuilderVersion
+	gitImageRef := "rockstorm/git-server:2.45"
 
 	// TODO: envbuilder creates /.envbuilder/bin/envbuilder owned by root:root which we are unable to clean up.
 	// This causes tests to fail.
@@ -60,10 +90,20 @@ func setup(t testing.TB, files map[string]string) testDependencies {
 	regDir := t.TempDir()
 	reg := registrytest.New(t, regDir)
 	writeFiles(t, files, repoDir)
+	initGitRepo(t, repoDir)
+
+	sshDir := t.TempDir()
+	writeFiles(t, map[string]string{
+		"id_ed25516":      testSSHUserKey,
+		"authorized_keys": testSSHUserPubKey,
+	}, sshDir)
+
 	return testDependencies{
 		BuilderImage: envbuilderImageRef,
 		CacheRepo:    reg + "/test",
 		RepoDir:      repoDir,
+		GitImage:     gitImageRef,
+		SSHDir:       sshDir,
 	}
 }
 
@@ -71,7 +111,40 @@ func seedCache(ctx context.Context, t testing.TB, deps testDependencies) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	require.NoError(t, err, "init docker client")
 	t.Cleanup(func() { _ = cli.Close() })
+
+	ensureImage(ctx, t, cli, deps.GitImage)
 	ensureImage(ctx, t, cli, deps.BuilderImage)
+
+	// TODO(mafredri): Use a dynamic port?
+	sshPort := "2222"
+
+	gitCtr, err := cli.ContainerCreate(ctx, &container.Config{
+		Image: deps.GitImage,
+		Env: []string{
+			"SSH_AUTH_METHODS=publickey",
+		},
+		Labels: map[string]string{
+			testContainerLabel: "true",
+		},
+	}, &container.HostConfig{
+		PortBindings: nat.PortMap{
+			"22/tcp": []nat.PortBinding{{HostIP: "localhost", HostPort: sshPort}},
+		},
+		Binds: []string{
+			deps.RepoDir + ":/srv/git/repo.git",
+			deps.SSHDir + ":/home/git/.ssh",
+		},
+	}, nil, nil, "")
+	require.NoError(t, err, "failed to run git server")
+	t.Cleanup(func() {
+		_ = cli.ContainerRemove(ctx, gitCtr.ID, container.RemoveOptions{
+			RemoveVolumes: true,
+			Force:         true,
+		})
+	})
+	err = cli.ContainerStart(ctx, gitCtr.ID, container.StartOptions{})
+	require.NoError(t, err)
+
 	// Run envbuilder using this dir as a local layer cache
 	ctr, err := cli.ContainerCreate(ctx, &container.Config{
 		Image: deps.BuilderImage,
@@ -81,14 +154,20 @@ func seedCache(ctx context.Context, t testing.TB, deps testDependencies) {
 			"ENVBUILDER_INIT_SCRIPT=exit",
 			"ENVBUILDER_PUSH_IMAGE=true",
 			"ENVBUILDER_VERBOSE=true",
+			fmt.Sprintf("ENVBUILDER_GIT_URL=ssh://git@localhost:%s/srv/git/repo.git", sshPort),
+			"ENVBUILDER_GIT_SSH_PRIVATE_KEY_PATH=/tmp/ssh/id_ed25516",
 		},
 		Labels: map[string]string{
 			testContainerLabel: "true",
 		},
 	}, &container.HostConfig{
 		NetworkMode: container.NetworkMode("host"),
-		Binds:       []string{deps.RepoDir + ":" + "/workspaces/empty"},
+		Binds: []string{
+			// deps.RepoDir + ":" + "/workspaces/empty",
+			deps.SSHDir + ":/tmp/ssh",
+		},
 	}, nil, nil, "")
+
 	require.NoError(t, err, "failed to run envbuilder to seed cache")
 	t.Cleanup(func() {
 		_ = cli.ContainerRemove(ctx, ctr.ID, container.RemoveOptions{
@@ -134,6 +213,8 @@ func getEnvOrDefault(env, defVal string) string {
 }
 
 func writeFiles(t testing.TB, files map[string]string, destPath string) {
+	t.Helper()
+
 	for relPath, content := range files {
 		absPath := filepath.Join(destPath, relPath)
 		d := filepath.Dir(absPath)
@@ -164,4 +245,27 @@ func ensureImage(ctx context.Context, t testing.TB, cli *client.Client, ref stri
 	require.NoError(t, err)
 	_, err = io.ReadAll(resp)
 	require.NoError(t, err)
+}
+
+func initGitRepo(t testing.TB, dir string) {
+	t.Helper()
+
+	repo, err := git.PlainInitWithOptions(dir, &git.PlainInitOptions{
+		InitOptions: git.InitOptions{
+			DefaultBranch: plumbing.ReferenceName("refs/heads/main"),
+		},
+	})
+	require.NoError(t, err, "init git repo")
+	wt, err := repo.Worktree()
+	require.NoError(t, err, "get worktree")
+	_, err = wt.Add(".")
+	require.NoError(t, err, "add files")
+	_, err = wt.Commit("initial commit", &git.CommitOptions{
+		Author: &object.Signature{
+			Name:  "test",
+			Email: "test@coder.com",
+		},
+	})
+	require.NoError(t, err, "commit files")
+	t.Logf("initialized git repo at %s", dir)
 }

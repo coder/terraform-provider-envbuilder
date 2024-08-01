@@ -295,13 +295,14 @@ func (d *CachedImageDataSource) Read(ctx context.Context, req datasource.ReadReq
 	// This may require changing this to be a resource instead of a data source.
 	opts := eboptions.Options{
 		// These options are always required
-		CacheRepo:       data.CacheRepo.ValueString(),
-		Filesystem:      osfs.New("/"),
-		ForceSafe:       false, // This should never be set to true, as this may be running outside of a container!
-		GetCachedImage:  true,  // always!
-		Logger:          tfLogFunc(ctx),
-		Verbose:         data.Verbose.ValueBool(),
-		WorkspaceFolder: workspaceFolder,
+		CacheRepo:           data.CacheRepo.ValueString(),
+		Filesystem:          osfs.New("/"),
+		ForceSafe:           false, // This should never be set to true, as this may be running outside of a container!
+		GetCachedImage:      true,  // always!
+		Logger:              tfLogFunc(ctx),
+		Verbose:             data.Verbose.ValueBool(),
+		WorkspaceFolder:     workspaceFolder,
+		RemoteRepoBuildMode: true,
 
 		// Options related to compiling the devcontainer
 		BuildContextPath:     data.BuildContextPath.ValueString(),
