@@ -312,7 +312,7 @@ func (d *CachedImageDataSource) Read(ctx context.Context, req datasource.ReadReq
 		}
 		tflog.Info(ctx, fmt.Sprintf("found image: %s@%s", opts.CacheRepo, digest))
 		data.ID = types.StringValue(digest.String())
-		data.Image = types.StringValue(fmt.Sprintf("%s@%s", data.CacheRepo, digest.String()))
+		data.Image = types.StringValue(fmt.Sprintf("%s@%s", opts.CacheRepo, digest))
 	}
 
 	// Compute the env attribute from the config map.
