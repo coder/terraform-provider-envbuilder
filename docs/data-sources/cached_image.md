@@ -65,4 +65,4 @@ resource "docker_container" "container" {
 - `env` (List of String) Computed envbuilder configuration to be set for the container.
 - `exists` (Boolean) Whether the cached image was exists or not for the given config.
 - `id` (String) Cached image identifier. This will generally be the image's SHA256 digest.
-- `image` (String) Outputs the cached image URL if it exists, otherwise the builder image URL is output instead.
+- `image` (String) Outputs the cached image URL if it exists, otherwise the builder image URL as output instead.
