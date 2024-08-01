@@ -246,6 +246,11 @@ func (d *CachedImageDataSource) Read(ctx context.Context, req datasource.ReadReq
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to create temp directory: %s", err.Error()))
 		return
 	}
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			tflog.Error(ctx, "failed to clean up tmpDir", map[string]any{"tmpDir": tmpDir, "err": err.Error()})
+		}
+	}()
 	oldKanikoDir := kconfig.KanikoDir
 	tmpKanikoDir := filepath.Join(tmpDir, constants.MagicDir)
 	// Normally you would set the KANIKO_DIR environment variable, but we are importing kaniko directly.
