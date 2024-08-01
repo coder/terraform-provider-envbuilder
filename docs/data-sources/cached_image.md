@@ -33,36 +33,36 @@ resource "docker_container" "container" {
 
 ### Required
 
-- `builder_image` (String) The builder image URL to use if the cache does not exist.
+- `builder_image` (String) The builder image to use if the cache does not exist.
 - `cache_repo` (String) The name of the container registry to fetch the cache image from.
 - `git_url` (String) The URL of a Git repository containing a Devcontainer or Docker image to clone.
 
 ### Optional
 
-- `base_image_cache_dir` (String) TODO
-- `build_context_path` (String) TODO
+- `base_image_cache_dir` (String) The path to a directory where the base image can be found. This should be a read-only directory solely mounted for the purpose of caching the base image.
+- `build_context_path` (String) Can be specified when a DockerfilePath is specified outside the base WorkspaceFolder. This path MUST be relative to the WorkspaceFolder path into which the repo is cloned.
 - `cache_ttl_days` (Number) The number of days to use cached layers before expiring them. Defaults to 7 days.
-- `devcontainer_dir` (String) TODO
-- `devcontainer_json_path` (String) TODO
-- `docker_config_base64` (String) TODO
-- `dockerfile_path` (String) TODO
-- `exit_on_build_failure` (Boolean) TODO
+- `devcontainer_dir` (String) The path to the folder containing the devcontainer.json file that will be used to build the workspace and can either be an absolute path or a path relative to the workspace folder. If not provided, defaults to `.devcontainer`.
+- `devcontainer_json_path` (String) The path to a devcontainer.json file that is either an absolute path or a path relative to DevcontainerDir. This can be used in cases where one wants to substitute an edited devcontainer.json file for the one that exists in the repo.
+- `docker_config_base64` (String) The base64 encoded Docker config file that will be used to pull images from private container registries.
+- `dockerfile_path` (String) The relative path to the Dockerfile that will be used to build the workspace. This is an alternative to using a devcontainer that some might find simpler.
+- `exit_on_build_failure` (Boolean) Terminates upon a build failure. This is handy when preferring the FALLBACK_IMAGE in cases where no devcontainer.json or image is provided. However, it ensures that the container stops if the build process encounters an error.
 - `extra_env` (Map of String) Extra environment variables to set for the container. This may include evbuilder options.
-- `fallback_image` (String) TODO
-- `git_clone_depth` (Number) TODO
-- `git_clone_single_branch` (Boolean) TODO
-- `git_http_proxy_url` (String) TODO
+- `fallback_image` (String) Specifies an alternative image to use when neither an image is declared in the devcontainer.json file nor a Dockerfile is present. If there's a build failure (from a faulty Dockerfile) or a misconfiguration, this image will be the substitute. Set ExitOnBuildFailure to true to halt the container if the build faces an issue.
+- `git_clone_depth` (Number) The depth to use when cloning the Git repository.
+- `git_clone_single_branch` (Boolean) Clone only a single branch of the Git repository.
+- `git_http_proxy_url` (String) The URL for the HTTP proxy. This is optional.
 - `git_password` (String, Sensitive) The password to use for Git authentication. This is optional.
-- `git_ssh_private_key_path` (String) TODO
+- `git_ssh_private_key_path` (String) Path to an SSH private key to be used for Git authentication.
 - `git_username` (String) The username to use for Git authentication. This is optional.
-- `ignore_paths` (List of String) TODO
-- `insecure` (Boolean) TODO
-- `ssl_cert_base64` (String) TODO
+- `ignore_paths` (List of String) The comma separated list of paths to ignore when building the workspace.
+- `insecure` (Boolean) Bypass TLS verification when cloning and pulling from container registries.
+- `ssl_cert_base64` (String) The content of an SSL cert file. This is useful for self-signed certificates.
 - `verbose` (Boolean) Enable verbose output.
 
 ### Read-Only
 
 - `env` (List of String) Computed envbuilder configuration to be set for the container.
 - `exists` (Boolean) Whether the cached image was exists or not for the given config.
-- `id` (String) Cached image identifier
+- `id` (String) Cached image identifier. This will generally be the image's SHA256 digest.
 - `image` (String) Outputs the cached image URL if it exists, otherwise the builder image URL is output instead.

@@ -76,15 +76,15 @@ func (d *CachedImageDataSource) Schema(ctx context.Context, req datasource.Schem
 
 		Attributes: map[string]schema.Attribute{
 			"base_image_cache_dir": schema.StringAttribute{
-				MarkdownDescription: "TODO",
+				MarkdownDescription: "The path to a directory where the base image can be found. This should be a read-only directory solely mounted for the purpose of caching the base image.",
 				Optional:            true,
 			},
 			"build_context_path": schema.StringAttribute{
-				MarkdownDescription: "TODO",
+				MarkdownDescription: "Can be specified when a DockerfilePath is specified outside the base WorkspaceFolder. This path MUST be relative to the WorkspaceFolder path into which the repo is cloned.",
 				Optional:            true,
 			},
 			"builder_image": schema.StringAttribute{
-				MarkdownDescription: "The builder image URL to use if the cache does not exist.",
+				MarkdownDescription: "The builder image to use if the cache does not exist.",
 				Required:            true,
 			},
 			"cache_repo": schema.StringAttribute{
@@ -96,19 +96,19 @@ func (d *CachedImageDataSource) Schema(ctx context.Context, req datasource.Schem
 				Optional:            true,
 			},
 			"devcontainer_dir": schema.StringAttribute{
-				MarkdownDescription: "TODO",
+				MarkdownDescription: "The path to the folder containing the devcontainer.json file that will be used to build the workspace and can either be an absolute path or a path relative to the workspace folder. If not provided, defaults to `.devcontainer`.",
 				Optional:            true,
 			},
 			"devcontainer_json_path": schema.StringAttribute{
-				MarkdownDescription: "TODO",
+				MarkdownDescription: "The path to a devcontainer.json file that is either an absolute path or a path relative to DevcontainerDir. This can be used in cases where one wants to substitute an edited devcontainer.json file for the one that exists in the repo.",
 				Optional:            true,
 			},
 			"dockerfile_path": schema.StringAttribute{
-				MarkdownDescription: "TODO",
+				MarkdownDescription: "The relative path to the Dockerfile that will be used to build the workspace. This is an alternative to using a devcontainer that some might find simpler.",
 				Optional:            true,
 			},
 			"docker_config_base64": schema.StringAttribute{
-				MarkdownDescription: "TODO",
+				MarkdownDescription: "The base64 encoded Docker config file that will be used to pull images from private container registries.",
 				Optional:            true,
 			},
 			// TODO(mafredri): Map vs List? Support both?
@@ -122,7 +122,7 @@ func (d *CachedImageDataSource) Schema(ctx context.Context, req datasource.Schem
 				Computed:            true,
 			},
 			"exit_on_build_failure": schema.BoolAttribute{
-				MarkdownDescription: "TODO",
+				MarkdownDescription: "Terminates upon a build failure. This is handy when preferring the FALLBACK_IMAGE in cases where no devcontainer.json or image is provided. However, it ensures that the container stops if the build process encounters an error.",
 				Optional:            true,
 			},
 			// TODO(mafredri): Map vs List? Support both?
@@ -132,19 +132,19 @@ func (d *CachedImageDataSource) Schema(ctx context.Context, req datasource.Schem
 				Optional:            true,
 			},
 			"fallback_image": schema.StringAttribute{
-				MarkdownDescription: "TODO",
+				MarkdownDescription: "Specifies an alternative image to use when neither an image is declared in the devcontainer.json file nor a Dockerfile is present. If there's a build failure (from a faulty Dockerfile) or a misconfiguration, this image will be the substitute. Set ExitOnBuildFailure to true to halt the container if the build faces an issue.",
 				Optional:            true,
 			},
 			"git_clone_depth": schema.Int64Attribute{
-				MarkdownDescription: "TODO",
+				MarkdownDescription: "The depth to use when cloning the Git repository.",
 				Optional:            true,
 			},
 			"git_clone_single_branch": schema.BoolAttribute{
-				MarkdownDescription: "TODO",
+				MarkdownDescription: "Clone only a single branch of the Git repository.",
 				Optional:            true,
 			},
 			"git_http_proxy_url": schema.StringAttribute{
-				MarkdownDescription: "TODO",
+				MarkdownDescription: "The URL for the HTTP proxy. This is optional.",
 				Optional:            true,
 			},
 			"git_password": schema.StringAttribute{
@@ -153,7 +153,7 @@ func (d *CachedImageDataSource) Schema(ctx context.Context, req datasource.Schem
 				Optional:            true,
 			},
 			"git_ssh_private_key_path": schema.StringAttribute{
-				MarkdownDescription: "TODO",
+				MarkdownDescription: "Path to an SSH private key to be used for Git authentication.",
 				Optional:            true,
 			},
 			"git_username": schema.StringAttribute{
@@ -165,11 +165,11 @@ func (d *CachedImageDataSource) Schema(ctx context.Context, req datasource.Schem
 				Required:            true,
 			},
 			"id": schema.StringAttribute{
-				MarkdownDescription: "Cached image identifier",
+				MarkdownDescription: "Cached image identifier. This will generally be the image's SHA256 digest.",
 				Computed:            true,
 			},
 			"ignore_paths": schema.ListAttribute{
-				MarkdownDescription: "TODO",
+				MarkdownDescription: "The comma separated list of paths to ignore when building the workspace.",
 				ElementType:         types.StringType,
 				Optional:            true,
 			},
@@ -178,11 +178,11 @@ func (d *CachedImageDataSource) Schema(ctx context.Context, req datasource.Schem
 				Computed:            true,
 			},
 			"insecure": schema.BoolAttribute{
-				MarkdownDescription: "TODO",
+				MarkdownDescription: "Bypass TLS verification when cloning and pulling from container registries.",
 				Optional:            true,
 			},
 			"ssl_cert_base64": schema.StringAttribute{
-				MarkdownDescription: "TODO",
+				MarkdownDescription: "The content of an SSL cert file. This is useful for self-signed certificates.",
 				Optional:            true,
 			},
 			"verbose": schema.BoolAttribute{
