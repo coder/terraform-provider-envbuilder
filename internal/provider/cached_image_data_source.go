@@ -299,23 +299,19 @@ func (d *CachedImageDataSource) Read(ctx context.Context, req datasource.ReadReq
 	}
 
 	image, err := envbuilder.RunCacheProbe(ctx, opts)
+	data.Exists = types.BoolValue(err == nil)
 	if err != nil {
-		resp.Diagnostics.AddError("Failed to check for cached image", err.Error())
-		return
+		resp.Diagnostics.AddWarning("Cached image not found", err.Error())
+	} else {
+		digest, err := image.Digest()
+		if err != nil {
+			resp.Diagnostics.AddError("Failed to get cached image digest", err.Error())
+			return
+		}
+		tflog.Info(ctx, fmt.Sprintf("found image: %s@%s", opts.CacheRepo, digest))
+		data.ID = types.StringValue(digest.String())
+		data.Image = types.StringValue(fmt.Sprintf("%s@%s", data.CacheRepo, digest.String()))
 	}
-
-	digest, err := image.Digest()
-	if err != nil {
-		resp.Diagnostics.AddError("Failed to get cached image digest", err.Error())
-		return
-	}
-
-	tflog.Info(ctx, fmt.Sprintf("found image: %s@%s", opts.CacheRepo, digest))
-
-	// TODO(mafredri): Implement the actual data source read logic.
-	data.ID = types.StringValue("cached-image-id")
-	data.Exists = types.BoolValue(true)
-	data.Image = types.StringValue(fmt.Sprintf("%s@%s", data.CacheRepo, digest.String()))
 
 	// Compute the env attribute from the config map.
 	// TODO(mafredri): Convert any other relevant attributes given via schema.

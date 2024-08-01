@@ -50,28 +50,37 @@ type testDependencies struct {
 	CacheRepo    string
 }
 
-func setup(ctx context.Context, t testing.TB, files map[string]string) testDependencies {
+func setup(t testing.TB, files map[string]string) testDependencies {
 	t.Helper()
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	require.NoError(t, err, "init docker client")
-	t.Cleanup(func() { _ = cli.Close() })
+
+	envbuilderImage := getEnvOrDefault("ENVBUILDER_IMAGE", "ghcr.io/coder/envbuilder-preview")
+	envbuilderVersion := getEnvOrDefault("ENVBUILDER_VERSION", "latest")
+	envbuilderImageRef := envbuilderImage + ":" + envbuilderVersion
 
 	// TODO: envbuilder creates /.envbuilder/bin/envbuilder owned by root:root which we are unable to clean up.
 	// This causes tests to fail.
 	repoDir := t.TempDir()
 	cacheRepo := runLocalRegistry(t)
 	writeFiles(t, files, repoDir)
+	return testDependencies{
+		BuilderImage: envbuilderImageRef,
+		CacheRepo:    cacheRepo,
+		RepoDir:      repoDir,
+	}
+}
 
-	envbuilderImage := getEnvOrDefault("ENVBUILDER_IMAGE", "ghcr.io/coder/envbuilder-preview")
-	envbuilderVersion := getEnvOrDefault("ENVBUILDER_VERSION", "latest")
-	refStr := envbuilderImage + ":" + envbuilderVersion
-	ensureImage(ctx, t, cli, refStr)
+
+func seedCache(ctx context.Context, t testing.TB, deps testDependencies) {
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	require.NoError(t, err, "init docker client")
+	t.Cleanup(func() { _ = cli.Close() })
+	ensureImage(ctx, t, cli, deps.BuilderImage)
 	// Run envbuilder using this dir as a local layer cache
 	ctr, err := cli.ContainerCreate(ctx, &container.Config{
-		Image: refStr,
+		Image: deps.BuilderImage,
 		Env: []string{
-			"ENVBUILDER_CACHE_REPO=" + cacheRepo,
-			"ENVBUILDER_DEVCONTAINER_DIR=" + repoDir,
+			"ENVBUILDER_CACHE_REPO=" + deps.CacheRepo,
+			"ENVBUILDER_DEVCONTAINER_DIR=" + deps.RepoDir,
 			"ENVBUILDER_EXIT_ON_BUILD_FAILURE=true",
 			"ENVBUILDER_INIT_SCRIPT=exit",
 			// FIXME: Enabling this options causes envbuilder to add its binary to the image under the path
@@ -83,7 +92,7 @@ func setup(ctx context.Context, t testing.TB, files map[string]string) testDepen
 			testContainerLabel: "true",
 		}}, &container.HostConfig{
 		NetworkMode: container.NetworkMode("host"),
-		Binds:       []string{repoDir + ":" + repoDir},
+		Binds:       []string{deps.RepoDir+ ":" + deps.RepoDir},
 	}, nil, nil, "")
 	require.NoError(t, err, "failed to run envbuilder to seed cache")
 	t.Cleanup(func() {
@@ -121,11 +130,6 @@ SCANLOGS:
 		}
 	}
 
-	return testDependencies{
-		BuilderImage: refStr,
-		CacheRepo:    cacheRepo,
-		RepoDir:      repoDir,
-	}
 }
 
 func getEnvOrDefault(env, defVal string) string {
