@@ -11,7 +11,7 @@ replace tailscale.com => github.com/coder/tailscale v1.1.1-0.20240702054557-aa55
 require (
 	github.com/GoogleContainerTools/kaniko v1.9.2
 	github.com/coder/envbuilder v1.0.0-rc.0.0.20240731115920-cacbcb8fef6c
-	github.com/docker/docker v26.1.0+incompatible
+	github.com/docker/docker v26.1.4+incompatible
 	github.com/go-git/go-billy/v5 v5.5.0
 	github.com/google/go-containerregistry v0.19.1
 	github.com/hashicorp/terraform-plugin-docs v0.19.4
