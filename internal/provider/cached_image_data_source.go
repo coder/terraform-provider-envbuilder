@@ -264,6 +264,8 @@ func (d *CachedImageDataSource) Read(ctx context.Context, req datasource.ReadReq
 		tflog.Error(ctx, "failed to create kaniko dir: "+err.Error())
 	}
 
+	// TODO: check if this is a "plan" or "apply", and only run envbuilder on "apply".
+	// This may require changing this to be a resource instead of a data source.
 	opts := eboptions.Options{
 		// These options are always required
 		CacheRepo:       data.CacheRepo.ValueString(),
