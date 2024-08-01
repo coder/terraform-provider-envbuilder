@@ -1,4 +1,4 @@
-module github.com/mafredri/terraform-provider-envbuilder
+module github.com/coder/terraform-provider-envbuilder
 
 go 1.22.4
 
