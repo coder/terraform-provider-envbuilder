@@ -104,14 +104,14 @@ func TestAccCachedImageDataSource(t *testing.T) {
 						resource.TestCheckResourceAttr("data.envbuilder_cached_image.test", "cache_repo", deps.CacheRepo),
 						resource.TestCheckResourceAttr("data.envbuilder_cached_image.test", "extra_env.FOO", "bar"),
 						resource.TestCheckResourceAttr("data.envbuilder_cached_image.test", "git_url", deps.RepoDir),
+						resource.TestCheckResourceAttr("data.envbuilder_cached_image.test", "exists", "false"),
+						resource.TestCheckResourceAttr("data.envbuilder_cached_image.test", "image", deps.BuilderImage),
 						// Should be empty
 						resource.TestCheckNoResourceAttr("data.envbuilder_cached_image.test", "git_username"),
 						resource.TestCheckNoResourceAttr("data.envbuilder_cached_image.test", "git_password"),
 						resource.TestCheckNoResourceAttr("data.envbuilder_cached_image.test", "cache_ttl_days"),
 						// Computed values should be empty.
 						resource.TestCheckNoResourceAttr("data.envbuilder_cached_image.test", "id"),
-						resource.TestCheckResourceAttr("data.envbuilder_cached_image.test", "exists", "false"),
-						resource.TestCheckNoResourceAttr("data.envbuilder_cached_image.test", "image"),
 						resource.TestCheckResourceAttrSet("data.envbuilder_cached_image.test", "env.0"),
 					),
 				},

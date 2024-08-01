@@ -174,7 +174,7 @@ func (d *CachedImageDataSource) Schema(ctx context.Context, req datasource.Schem
 				Optional:            true,
 			},
 			"image": schema.StringAttribute{
-				MarkdownDescription: "Outputs the cached image URL if it exists, otherwise the builder image URL is output instead.",
+				MarkdownDescription: "Outputs the cached image URL if it exists, otherwise the builder image URL as output instead.",
 				Computed:            true,
 			},
 			"insecure": schema.BoolAttribute{
@@ -302,6 +302,8 @@ func (d *CachedImageDataSource) Read(ctx context.Context, req datasource.ReadReq
 	data.Exists = types.BoolValue(err == nil)
 	if err != nil {
 		resp.Diagnostics.AddWarning("Cached image not found", err.Error())
+		// TODO: Get the repo digest of the envbuilder image and use that as the ID
+		data.Image = data.BuilderImage
 	} else {
 		digest, err := image.Digest()
 		if err != nil {
