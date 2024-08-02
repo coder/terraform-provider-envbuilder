@@ -4,8 +4,10 @@
 package provider
 
 import (
+	"archive/tar"
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -16,6 +18,9 @@ import (
 	eblog "github.com/coder/envbuilder/log"
 	eboptions "github.com/coder/envbuilder/options"
 	"github.com/go-git/go-billy/v5/osfs"
+	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -62,6 +67,7 @@ type CachedImageDataSourceModel struct {
 	Insecure             types.Bool   `tfsdk:"insecure"`
 	SSLCertBase64        types.String `tfsdk:"ssl_cert_base64"`
 	Verbose              types.Bool   `tfsdk:"verbose"`
+	WorkspaceFolder      types.String `tfsdk:"workspace_folder"`
 	// Computed "outputs".
 	Env    types.List   `tfsdk:"env"`
 	Exists types.Bool   `tfsdk:"exists"`
@@ -179,6 +185,10 @@ func (d *CachedImageDataSource) Schema(ctx context.Context, req datasource.Schem
 				MarkdownDescription: "(Envbuilder option) Enable verbose output.",
 				Optional:            true,
 			},
+			"workspace_folder": schema.StringAttribute{
+				MarkdownDescription: "(Envbuilder option) path to the workspace folder that will be built. This is optional.",
+				Optional:            true,
+			},
 
 			// Computed "outputs".
 			// TODO(mafredri): Map vs List? Support both?
@@ -248,9 +258,10 @@ func (d *CachedImageDataSource) Read(ctx context.Context, req datasource.ReadReq
 	}
 	defer func() {
 		if err := os.RemoveAll(tmpDir); err != nil {
-			tflog.Error(ctx, "failed to clean up tmpDir", map[string]any{"tmpDir": tmpDir, "err": err.Error()})
+			tflog.Error(ctx, "failed to clean up tmpDir", map[string]any{"tmpDir": tmpDir, "err": err})
 		}
 	}()
+
 	oldKanikoDir := kconfig.KanikoDir
 	tmpKanikoDir := filepath.Join(tmpDir, constants.MagicDir)
 	// Normally you would set the KANIKO_DIR environment variable, but we are importing kaniko directly.
@@ -262,6 +273,22 @@ func (d *CachedImageDataSource) Read(ctx context.Context, req datasource.ReadReq
 	}()
 	if err := os.MkdirAll(tmpKanikoDir, 0o755); err != nil {
 		tflog.Error(ctx, "failed to create kaniko dir: "+err.Error())
+		return
+	}
+
+	// In order to correctly reproduce the final layer of the cached image, we
+	// need the envbuilder binary used to originally build the image!
+	envbuilderPath := filepath.Join(tmpDir, "envbuilder")
+	if err := extractEnvbuilderFromImage(ctx, data.BuilderImage.ValueString(), envbuilderPath); err != nil {
+		tflog.Error(ctx, "failed to fetch envbuilder binary from builder image", map[string]any{"err": err})
+		resp.Diagnostics.AddError("Internal Error", fmt.Sprintf("Failed to fetch the envbuilder binary from the builder image: %s", err.Error()))
+		return
+	}
+
+	workspaceFolder := data.WorkspaceFolder.ValueString()
+	if workspaceFolder == "" {
+		workspaceFolder = filepath.Join(tmpDir, "workspace")
+		tflog.Debug(ctx, "workspace_folder not specified, using temp dir", map[string]any{"workspace_folder": workspaceFolder})
 	}
 
 	// TODO: check if this is a "plan" or "apply", and only run envbuilder on "apply".
@@ -274,7 +301,7 @@ func (d *CachedImageDataSource) Read(ctx context.Context, req datasource.ReadReq
 		GetCachedImage:  true,  // always!
 		Logger:          tfLogFunc(ctx),
 		Verbose:         data.Verbose.ValueBool(),
-		WorkspaceFolder: tmpDir,
+		WorkspaceFolder: workspaceFolder,
 
 		// Options related to compiling the devcontainer
 		BuildContextPath:     data.BuildContextPath.ValueString(),
@@ -297,6 +324,7 @@ func (d *CachedImageDataSource) Read(ctx context.Context, req datasource.ReadReq
 
 		// Other options
 		BaseImageCacheDir:  data.BaseImageCacheDir.ValueString(),
+		BinaryPath:         envbuilderPath,                        // needed to reproduce the final layer.
 		ExitOnBuildFailure: data.ExitOnBuildFailure.ValueBool(),   // may wish to do this instead of fallback image?
 		Insecure:           data.Insecure.ValueBool(),             // might have internal CAs?
 		IgnorePaths:        tfListToStringSlice(data.IgnorePaths), // may need to be specified?
@@ -310,7 +338,7 @@ func (d *CachedImageDataSource) Read(ctx context.Context, req datasource.ReadReq
 		InitScript:          "",
 		LayerCacheDir:       "",
 		PostStartScriptPath: "",
-		PushImage:           false,
+		PushImage:           false, // This is only relevant when building.
 		SetupScript:         "",
 		SkipRebuild:         false,
 	}
@@ -400,4 +428,78 @@ func tfListToStringSlice(l types.List) []string {
 		}
 	}
 	return ss
+}
+
+// extractEnvbuilderFromImage reads the image located at imgRef and extracts
+// MagicBinaryLocation to destPath.
+func extractEnvbuilderFromImage(ctx context.Context, imgRef, destPath string) error {
+	needle := filepath.Clean(constants.MagicBinaryLocation)[1:] // skip leading '/'
+	ref, err := name.ParseReference(imgRef)
+	if err != nil {
+		return fmt.Errorf("parse reference: %w", err)
+	}
+
+	img, err := remote.Image(ref, remote.WithAuthFromKeychain(authn.DefaultKeychain))
+	if err != nil {
+		return fmt.Errorf("check remote image: %w", err)
+	}
+
+	layers, err := img.Layers()
+	if err != nil {
+		return fmt.Errorf("get image layers: %w", err)
+	}
+
+	// Check the layers in reverse order. The last layers are more likely to
+	// include the binary.
+	for i := len(layers) - 1; i >= 0; i-- {
+		ul, err := layers[i].Uncompressed()
+		if err != nil {
+			return fmt.Errorf("get uncompressed layer: %w", err)
+		}
+
+		tr := tar.NewReader(ul)
+		for {
+			th, err := tr.Next()
+			if err == io.EOF {
+				break
+			}
+
+			if err != nil {
+				return fmt.Errorf("read tar header: %w", err)
+			}
+
+			if th.Typeflag != tar.TypeReg {
+				tflog.Debug(ctx, "skip non-regular file", map[string]any{"name": filepath.Clean(th.Name), "layer_idx": i + 1})
+				continue
+			}
+
+			if filepath.Clean(th.Name) != needle {
+				tflog.Debug(ctx, "skip file", map[string]any{"name": filepath.Clean(th.Name), "layer_idx": i + 1})
+				continue
+			}
+
+			tflog.Debug(ctx, "found file", map[string]any{"name": filepath.Clean(th.Name), "layer_idx": i + 1})
+			if err := os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
+				return fmt.Errorf("create parent directories: %w", err)
+			}
+			destF, err := os.Create(destPath)
+			if err != nil {
+				return fmt.Errorf("create dest file for writing: %w", err)
+			}
+
+			defer destF.Close()
+			_, err = io.Copy(destF, tr)
+			if err != nil {
+				return fmt.Errorf("copy dest file from image: %w", err)
+			}
+			_ = destF.Close()
+
+			if err := os.Chmod(destPath, 0o755); err != nil {
+				return fmt.Errorf("chmod file: %w", err)
+			}
+			return nil
+		}
+	}
+
+	return fmt.Errorf("extract envbuilder binary from image %q: %w", imgRef, os.ErrNotExist)
 }

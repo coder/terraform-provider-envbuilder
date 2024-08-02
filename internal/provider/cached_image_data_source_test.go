@@ -20,15 +20,15 @@ func TestAccCachedImageDataSource(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 		t.Cleanup(cancel)
 		files := map[string]string{
-			"devcontainer.json": `{"build": { "dockerfile": "Dockerfile" }}`,
-			"Dockerfile": `FROM localhost:5000/test-ubuntu:latest
+			".devcontainer/devcontainer.json": `{"build": { "dockerfile": "Dockerfile" }}`,
+			".devcontainer/Dockerfile": `FROM localhost:5000/test-ubuntu:latest
 	RUN apt-get update && apt-get install -y cowsay`,
 		}
 		deps := setup(t, files)
 		seedCache(ctx, t, deps)
 		tfCfg := fmt.Sprintf(`data "envbuilder_cached_image" "test" {
 	builder_image = %q
-	devcontainer_dir = %q
+	workspace_folder = %q
 	git_url = %q
 	extra_env = {
 	"FOO" : "bar"
@@ -78,15 +78,15 @@ func TestAccCachedImageDataSource(t *testing.T) {
 
 	t.Run("NotFound", func(t *testing.T) {
 		files := map[string]string{
-			"devcontainer.json": `{"build": { "dockerfile": "Dockerfile" }}`,
-			"Dockerfile": `FROM localhost:5000/test-ubuntu:latest
+			".devcontainer/devcontainer.json": `{"build": { "dockerfile": "Dockerfile" }}`,
+			".devcontainer/Dockerfile": `FROM localhost:5000/test-ubuntu:latest
 	RUN apt-get update && apt-get install -y cowsay`,
 		}
 		deps := setup(t, files)
 		// We do not seed the cache.
 		tfCfg := fmt.Sprintf(`data "envbuilder_cached_image" "test" {
 	builder_image = %q
-	devcontainer_dir = %q
+	workspace_folder = %q
 	git_url = %q
 	extra_env = {
 	"FOO" : "bar"
