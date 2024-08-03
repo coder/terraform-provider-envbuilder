@@ -3,14 +3,14 @@ module github.com/coder/terraform-provider-envbuilder
 go 1.22.4
 
 // We use our own Kaniko fork.
-replace github.com/GoogleContainerTools/kaniko => github.com/coder/kaniko v0.0.0-20240717115058-0ba2908ca4d3
+replace github.com/GoogleContainerTools/kaniko => github.com/coder/kaniko v0.0.0-20240803153527-10d1800455b9
 
 // Required to import codersdk due to gvisor dependency.
 replace tailscale.com => github.com/coder/tailscale v1.1.1-0.20240702054557-aa558fbe5374
 
 require (
 	github.com/GoogleContainerTools/kaniko v1.9.2
-	github.com/coder/envbuilder v1.0.0-rc.0.0.20240731115920-cacbcb8fef6c
+	github.com/coder/envbuilder v1.0.0-rc.0.0.20240803183847-6afe89e6950e
 	github.com/docker/docker v26.1.4+incompatible
 	github.com/go-git/go-billy/v5 v5.5.0
 	github.com/google/go-containerregistry v0.19.1
