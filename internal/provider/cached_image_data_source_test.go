@@ -34,6 +34,7 @@ func TestAccCachedImageDataSource(t *testing.T) {
 	"FOO" : "bar"
 	}
 	cache_repo = %q
+	verbose = true
 }`, deps.BuilderImage, deps.RepoDir, deps.RepoDir, deps.CacheRepo)
 		resource.Test(t, resource.TestCase{
 			PreCheck:                 func() { testAccPreCheck(t) },
@@ -92,6 +93,7 @@ func TestAccCachedImageDataSource(t *testing.T) {
 	"FOO" : "bar"
 	}
 	cache_repo = %q
+	verbose = true
 }`, deps.BuilderImage, deps.RepoDir, deps.RepoDir, deps.CacheRepo)
 		resource.Test(t, resource.TestCase{
 			PreCheck:                 func() { testAccPreCheck(t) },
