@@ -59,6 +59,7 @@ resource "docker_container" "container" {
 - `insecure` (Boolean) (Envbuilder option) Bypass TLS verification when cloning and pulling from container registries.
 - `ssl_cert_base64` (String) (Envbuilder option) The content of an SSL cert file. This is useful for self-signed certificates.
 - `verbose` (Boolean) (Envbuilder option) Enable verbose output.
+- `workspace_folder` (String) (Envbuilder option) path to the workspace folder that will be built. This is optional.
 
 ### Read-Only
 

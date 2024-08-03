@@ -77,19 +77,17 @@ func seedCache(ctx context.Context, t testing.TB, deps testDependencies) {
 		Image: deps.BuilderImage,
 		Env: []string{
 			"ENVBUILDER_CACHE_REPO=" + deps.CacheRepo,
-			"ENVBUILDER_DEVCONTAINER_DIR=" + deps.RepoDir,
 			"ENVBUILDER_EXIT_ON_BUILD_FAILURE=true",
 			"ENVBUILDER_INIT_SCRIPT=exit",
-			// FIXME: Enabling this options causes envbuilder to add its binary to the image under the path
-			// /.envbuilder/bin/envbuilder. This file will have ownership root:root and permissions 0o755.
-			// Because of this, t.Cleanup() will be unable to delete the temp dir, causing the test to fail.
-			// "ENVBUILDER_PUSH_IMAGE=true",
+			"ENVBUILDER_PUSH_IMAGE=true",
+			"ENVBUILDER_VERBOSE=true",
 		},
 		Labels: map[string]string{
 			testContainerLabel: "true",
-		}}, &container.HostConfig{
+		},
+	}, &container.HostConfig{
 		NetworkMode: container.NetworkMode("host"),
-		Binds:       []string{deps.RepoDir + ":" + deps.RepoDir},
+		Binds:       []string{deps.RepoDir + ":" + "/workspaces/empty"},
 	}, nil, nil, "")
 	require.NoError(t, err, "failed to run envbuilder to seed cache")
 	t.Cleanup(func() {
@@ -126,7 +124,6 @@ SCANLOGS:
 			}
 		}
 	}
-
 }
 
 func getEnvOrDefault(env, defVal string) string {

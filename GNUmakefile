@@ -7,8 +7,13 @@ test: testacc
 testacc:
 	TF_ACC=1 go test ./... -v $(TESTARGS) -timeout 120m
 
-fmt: examples/*/*.tf
+fmt: fmt/tf fmt/go
+
+fmt/tf: $(shell find . -type f -name '*.tf')
 	terraform fmt -recursive
+
+fmt/go: $(shell find . -type f -name '*.go')
+	go run mvdan.cc/gofumpt@v0.6.0 -l -w .
 
 gen:
 	go generate
