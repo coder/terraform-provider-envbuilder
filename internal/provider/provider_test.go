@@ -84,7 +84,8 @@ func seedCache(ctx context.Context, t testing.TB, deps testDependencies) {
 		},
 		Labels: map[string]string{
 			testContainerLabel: "true",
-		}}, &container.HostConfig{
+		},
+	}, &container.HostConfig{
 		NetworkMode: container.NetworkMode("host"),
 		Binds:       []string{deps.RepoDir + ":" + "/workspaces/empty"},
 	}, nil, nil, "")
@@ -123,7 +124,6 @@ SCANLOGS:
 			}
 		}
 	}
-
 }
 
 func getEnvOrDefault(env, defVal string) string {

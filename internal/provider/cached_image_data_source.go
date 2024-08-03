@@ -468,17 +468,18 @@ func extractEnvbuilderFromImage(ctx context.Context, imgRef, destPath string) er
 				return fmt.Errorf("read tar header: %w", err)
 			}
 
+			name := filepath.Clean(th.Name)
 			if th.Typeflag != tar.TypeReg {
-				tflog.Debug(ctx, "skip non-regular file", map[string]any{"name": filepath.Clean(th.Name), "layer_idx": i + 1})
+				tflog.Debug(ctx, "skip non-regular file", map[string]any{"name": name, "layer_idx": i + 1})
 				continue
 			}
 
-			if filepath.Clean(th.Name) != needle {
-				tflog.Debug(ctx, "skip file", map[string]any{"name": filepath.Clean(th.Name), "layer_idx": i + 1})
+			if name != needle {
+				tflog.Debug(ctx, "skip file", map[string]any{"name": name, "layer_idx": i + 1})
 				continue
 			}
 
-			tflog.Debug(ctx, "found file", map[string]any{"name": filepath.Clean(th.Name), "layer_idx": i + 1})
+			tflog.Debug(ctx, "found file", map[string]any{"name": name, "layer_idx": i + 1})
 			if err := os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
 				return fmt.Errorf("create parent directories: %w", err)
 			}
@@ -486,13 +487,14 @@ func extractEnvbuilderFromImage(ctx context.Context, imgRef, destPath string) er
 			if err != nil {
 				return fmt.Errorf("create dest file for writing: %w", err)
 			}
-
 			defer destF.Close()
 			_, err = io.Copy(destF, tr)
 			if err != nil {
 				return fmt.Errorf("copy dest file from image: %w", err)
 			}
-			_ = destF.Close()
+			if err := destF.Close(); err != nil {
+				return fmt.Errorf("close dest file: %w", err)
+			}
 
 			if err := os.Chmod(destPath, 0o755); err != nil {
 				return fmt.Errorf("chmod file: %w", err)
