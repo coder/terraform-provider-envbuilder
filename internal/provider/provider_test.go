@@ -108,6 +108,11 @@ func setup(t testing.TB, files map[string]string) testDependencies {
 }
 
 func seedCache(ctx context.Context, t testing.TB, deps testDependencies) {
+	t.Helper()
+
+	t.Logf("seeding cache with %s", deps.CacheRepo)
+	defer t.Logf("finished seeding cache with %s", deps.CacheRepo)
+
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	require.NoError(t, err, "init docker client")
 	t.Cleanup(func() { _ = cli.Close() })
