@@ -94,7 +94,7 @@ func setup(t testing.TB, files map[string]string) testDependencies {
 
 	sshDir := t.TempDir()
 	writeFiles(t, map[string]string{
-		"id_ed25516":      testSSHUserKey,
+		"id_ed25519":      testSSHUserKey,
 		"authorized_keys": testSSHUserPubKey,
 	}, sshDir)
 
@@ -155,7 +155,7 @@ func seedCache(ctx context.Context, t testing.TB, deps testDependencies) {
 			"ENVBUILDER_PUSH_IMAGE=true",
 			"ENVBUILDER_VERBOSE=true",
 			fmt.Sprintf("ENVBUILDER_GIT_URL=ssh://git@localhost:%s/srv/git/repo.git", sshPort),
-			"ENVBUILDER_GIT_SSH_PRIVATE_KEY_PATH=/tmp/ssh/id_ed25516",
+			"ENVBUILDER_GIT_SSH_PRIVATE_KEY_PATH=/tmp/ssh/id_ed25519",
 		},
 		Labels: map[string]string{
 			testContainerLabel: "true",
