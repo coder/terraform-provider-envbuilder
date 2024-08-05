@@ -18,24 +18,26 @@ import (
 func TestAccCachedImageDataSource(t *testing.T) {
 	t.Run("Found", func(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-		t.Cleanup(cancel)
+		defer cancel()
 		files := map[string]string{
 			".devcontainer/devcontainer.json": `{"build": { "dockerfile": "Dockerfile" }}`,
 			".devcontainer/Dockerfile": `FROM localhost:5000/test-ubuntu:latest
 	RUN apt-get update && apt-get install -y cowsay`,
 		}
-		deps := setup(t, files)
+
+		deps := setup(ctx, t, files)
 		seedCache(ctx, t, deps)
 		tfCfg := fmt.Sprintf(`data "envbuilder_cached_image" "test" {
 	builder_image = %q
 	workspace_folder = %q
 	git_url = %q
+	git_ssh_private_key_path = %q
 	extra_env = {
 	"FOO" : "bar"
 	}
 	cache_repo = %q
 	verbose = true
-}`, deps.BuilderImage, deps.RepoDir, deps.RepoDir, deps.CacheRepo)
+}`, deps.BuilderImage, "/workspace", deps.Repo.URL, deps.Repo.Key, deps.CacheRepo)
 		resource.Test(t, resource.TestCase{
 			PreCheck:                 func() { testAccPreCheck(t) },
 			ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
@@ -46,7 +48,7 @@ func TestAccCachedImageDataSource(t *testing.T) {
 						// Inputs should still be present.
 						resource.TestCheckResourceAttr("data.envbuilder_cached_image.test", "cache_repo", deps.CacheRepo),
 						resource.TestCheckResourceAttr("data.envbuilder_cached_image.test", "extra_env.FOO", "bar"),
-						resource.TestCheckResourceAttr("data.envbuilder_cached_image.test", "git_url", deps.RepoDir),
+						resource.TestCheckResourceAttr("data.envbuilder_cached_image.test", "git_url", deps.Repo.URL),
 						// Should be empty
 						resource.TestCheckNoResourceAttr("data.envbuilder_cached_image.test", "git_username"),
 						resource.TestCheckNoResourceAttr("data.envbuilder_cached_image.test", "git_password"),
@@ -78,23 +80,26 @@ func TestAccCachedImageDataSource(t *testing.T) {
 	})
 
 	t.Run("NotFound", func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
 		files := map[string]string{
 			".devcontainer/devcontainer.json": `{"build": { "dockerfile": "Dockerfile" }}`,
 			".devcontainer/Dockerfile": `FROM localhost:5000/test-ubuntu:latest
 	RUN apt-get update && apt-get install -y cowsay`,
 		}
-		deps := setup(t, files)
+		deps := setup(ctx, t, files)
 		// We do not seed the cache.
 		tfCfg := fmt.Sprintf(`data "envbuilder_cached_image" "test" {
 	builder_image = %q
 	workspace_folder = %q
 	git_url = %q
+	git_ssh_private_key_path = %q
 	extra_env = {
 	"FOO" : "bar"
 	}
 	cache_repo = %q
 	verbose = true
-}`, deps.BuilderImage, deps.RepoDir, deps.RepoDir, deps.CacheRepo)
+}`, deps.BuilderImage, "/workspace", deps.Repo.URL, deps.Repo.Key, deps.CacheRepo)
 		resource.Test(t, resource.TestCase{
 			PreCheck:                 func() { testAccPreCheck(t) },
 			ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
@@ -105,7 +110,7 @@ func TestAccCachedImageDataSource(t *testing.T) {
 						// Inputs should still be present.
 						resource.TestCheckResourceAttr("data.envbuilder_cached_image.test", "cache_repo", deps.CacheRepo),
 						resource.TestCheckResourceAttr("data.envbuilder_cached_image.test", "extra_env.FOO", "bar"),
-						resource.TestCheckResourceAttr("data.envbuilder_cached_image.test", "git_url", deps.RepoDir),
+						resource.TestCheckResourceAttr("data.envbuilder_cached_image.test", "git_url", deps.Repo.URL),
 						resource.TestCheckResourceAttr("data.envbuilder_cached_image.test", "exists", "false"),
 						resource.TestCheckResourceAttr("data.envbuilder_cached_image.test", "image", deps.BuilderImage),
 						// Should be empty

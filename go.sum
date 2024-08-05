@@ -186,8 +186,8 @@ github.com/cockroachdb/errors v1.2.4/go.mod h1:rQD95gz6FARkaKkQXUksEje/d9a6wBJoC
 github.com/cockroachdb/logtags v0.0.0-20190617123548-eb05cc24525f/go.mod h1:i/u985jwjWRlyHXQbwatDASoW0RMlZ/3i9yJHE2xLkI=
 github.com/coder/coder/v2 v2.10.1-0.20240704130443-c2d44d16a352 h1:L/EjCuZxs5tOcqqCaASj/nu65TRYEFcTt8qRQfHZXX0=
 github.com/coder/coder/v2 v2.10.1-0.20240704130443-c2d44d16a352/go.mod h1:P1KoQSgnKEAG6Mnd3YlGzAophty+yKA9VV48LpfNRvo=
-github.com/coder/envbuilder v1.0.0-rc.0.0.20240803183847-6afe89e6950e h1:gchZb6E2C5giRJwS2wPjbwHfxle4rJX7NqHCpN1XaT0=
-github.com/coder/envbuilder v1.0.0-rc.0.0.20240803183847-6afe89e6950e/go.mod h1:SCpGkbd04qsTIHUYRWEJMgt4R+uK+q4lGnOhEyTorjU=
+github.com/coder/envbuilder v1.0.0-rc.0.0.20240805094524-c1f9917dfb61 h1:SPOT1R13rgJie9l+VUsqd4TiqzSeGD2AmEv8wzmAcDE=
+github.com/coder/envbuilder v1.0.0-rc.0.0.20240805094524-c1f9917dfb61/go.mod h1:SCpGkbd04qsTIHUYRWEJMgt4R+uK+q4lGnOhEyTorjU=
 github.com/coder/kaniko v0.0.0-20240803153527-10d1800455b9 h1:d01T5YbPN1yc1mXjIXG59YcQQoT/9idvqFErjWHfsZ4=
 github.com/coder/kaniko v0.0.0-20240803153527-10d1800455b9/go.mod h1:YMK7BlxerzLlMwihGxNWUaFoN9LXCij4P+w/8/fNlcM=
 github.com/coder/pretty v0.0.0-20230908205945-e89ba86370e0 h1:3A0ES21Ke+FxEM8CXx9n47SZOKOpgSE1bbJzlE4qPVs=

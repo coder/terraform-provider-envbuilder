@@ -8,7 +8,6 @@ import (
 	"context"
 	"io"
 	"os"
-	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -43,11 +42,11 @@ func testAccPreCheck(t *testing.T) {
 
 type testDependencies struct {
 	BuilderImage string
-	RepoDir      string
 	CacheRepo    string
+	Repo         testGitRepoSSH
 }
 
-func setup(t testing.TB, files map[string]string) testDependencies {
+func setup(ctx context.Context, t testing.TB, files map[string]string) testDependencies {
 	t.Helper()
 
 	envbuilderImage := getEnvOrDefault("ENVBUILDER_IMAGE", "ghcr.io/coder/envbuilder-preview")
@@ -56,22 +55,31 @@ func setup(t testing.TB, files map[string]string) testDependencies {
 
 	// TODO: envbuilder creates /.envbuilder/bin/envbuilder owned by root:root which we are unable to clean up.
 	// This causes tests to fail.
-	repoDir := t.TempDir()
 	regDir := t.TempDir()
 	reg := registrytest.New(t, regDir)
-	writeFiles(t, files, repoDir)
+
+	repoDir := setupGitRepo(t, files)
+	gitRepo := serveGitRepoSSH(ctx, t, repoDir)
+
 	return testDependencies{
 		BuilderImage: envbuilderImageRef,
 		CacheRepo:    reg + "/test",
-		RepoDir:      repoDir,
+		Repo:         gitRepo,
 	}
 }
 
 func seedCache(ctx context.Context, t testing.TB, deps testDependencies) {
+	t.Helper()
+
+	t.Logf("seeding cache with %s", deps.CacheRepo)
+	defer t.Logf("finished seeding cache with %s", deps.CacheRepo)
+
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	require.NoError(t, err, "init docker client")
 	t.Cleanup(func() { _ = cli.Close() })
+
 	ensureImage(ctx, t, cli, deps.BuilderImage)
+
 	// Run envbuilder using this dir as a local layer cache
 	ctr, err := cli.ContainerCreate(ctx, &container.Config{
 		Image: deps.BuilderImage,
@@ -81,14 +89,19 @@ func seedCache(ctx context.Context, t testing.TB, deps testDependencies) {
 			"ENVBUILDER_INIT_SCRIPT=exit",
 			"ENVBUILDER_PUSH_IMAGE=true",
 			"ENVBUILDER_VERBOSE=true",
+			"ENVBUILDER_GIT_URL=" + deps.Repo.URL,
+			"ENVBUILDER_GIT_SSH_PRIVATE_KEY_PATH=/id_ed25519",
 		},
 		Labels: map[string]string{
 			testContainerLabel: "true",
 		},
 	}, &container.HostConfig{
 		NetworkMode: container.NetworkMode("host"),
-		Binds:       []string{deps.RepoDir + ":" + "/workspaces/empty"},
+		Binds: []string{
+			deps.Repo.Key + ":/id_ed25519",
+		},
 	}, nil, nil, "")
+
 	require.NoError(t, err, "failed to run envbuilder to seed cache")
 	t.Cleanup(func() {
 		_ = cli.ContainerRemove(ctx, ctr.ID, container.RemoveOptions{
@@ -131,17 +144,6 @@ func getEnvOrDefault(env, defVal string) string {
 		return val
 	}
 	return defVal
-}
-
-func writeFiles(t testing.TB, files map[string]string, destPath string) {
-	for relPath, content := range files {
-		absPath := filepath.Join(destPath, relPath)
-		d := filepath.Dir(absPath)
-		bs := []byte(content)
-		require.NoError(t, os.MkdirAll(d, 0o755))
-		require.NoError(t, os.WriteFile(absPath, bs, 0o644))
-		t.Logf("wrote %d bytes to %s", len(bs), absPath)
-	}
 }
 
 func ensureImage(ctx context.Context, t testing.TB, cli *client.Client, ref string) {
