@@ -85,5 +85,6 @@ jobs:
       - run: make test-registry
       - env:
           TF_ACC: "1"
+          TF_LOG: "debug"
         run: go test -v -cover ./internal/provider/
         timeout-minutes: 10
