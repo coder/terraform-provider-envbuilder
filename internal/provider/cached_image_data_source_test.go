@@ -35,7 +35,7 @@ func TestAccCachedImageDataSource(t *testing.T) {
 	}
 	cache_repo = %q
 	verbose = true
-}`, deps.BuilderImage, deps.RepoDir, deps.RepoDir, deps.CacheRepo)
+}`, deps.BuilderImage, "/workspace", deps.RepoURL, deps.CacheRepo)
 		resource.Test(t, resource.TestCase{
 			PreCheck:                 func() { testAccPreCheck(t) },
 			ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
@@ -46,7 +46,7 @@ func TestAccCachedImageDataSource(t *testing.T) {
 						// Inputs should still be present.
 						resource.TestCheckResourceAttr("data.envbuilder_cached_image.test", "cache_repo", deps.CacheRepo),
 						resource.TestCheckResourceAttr("data.envbuilder_cached_image.test", "extra_env.FOO", "bar"),
-						resource.TestCheckResourceAttr("data.envbuilder_cached_image.test", "git_url", deps.RepoDir),
+						resource.TestCheckResourceAttr("data.envbuilder_cached_image.test", "git_url", deps.RepoURL),
 						// Should be empty
 						resource.TestCheckNoResourceAttr("data.envbuilder_cached_image.test", "git_username"),
 						resource.TestCheckNoResourceAttr("data.envbuilder_cached_image.test", "git_password"),
@@ -94,7 +94,7 @@ func TestAccCachedImageDataSource(t *testing.T) {
 	}
 	cache_repo = %q
 	verbose = true
-}`, deps.BuilderImage, deps.RepoDir, deps.RepoDir, deps.CacheRepo)
+}`, deps.BuilderImage, "/workspace", deps.RepoURL, deps.CacheRepo)
 		resource.Test(t, resource.TestCase{
 			PreCheck:                 func() { testAccPreCheck(t) },
 			ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
@@ -105,7 +105,7 @@ func TestAccCachedImageDataSource(t *testing.T) {
 						// Inputs should still be present.
 						resource.TestCheckResourceAttr("data.envbuilder_cached_image.test", "cache_repo", deps.CacheRepo),
 						resource.TestCheckResourceAttr("data.envbuilder_cached_image.test", "extra_env.FOO", "bar"),
-						resource.TestCheckResourceAttr("data.envbuilder_cached_image.test", "git_url", deps.RepoDir),
+						resource.TestCheckResourceAttr("data.envbuilder_cached_image.test", "git_url", deps.RepoURL),
 						resource.TestCheckResourceAttr("data.envbuilder_cached_image.test", "exists", "false"),
 						resource.TestCheckResourceAttr("data.envbuilder_cached_image.test", "image", deps.BuilderImage),
 						// Should be empty

@@ -71,9 +71,11 @@ func testAccPreCheck(t *testing.T) {
 type testDependencies struct {
 	BuilderImage string
 	RepoDir      string
+	RepoURL      string
 	CacheRepo    string
 	GitImage     string
 	SSHDir       string
+	SSHPort      string
 }
 
 func setup(t testing.TB, files map[string]string) testDependencies {
@@ -98,12 +100,17 @@ func setup(t testing.TB, files map[string]string) testDependencies {
 		"authorized_keys": testSSHUserPubKey,
 	}, sshDir)
 
+	// TODO(mafredri): Use a dynamic port?
+	sshPort := "2222"
+
 	return testDependencies{
 		BuilderImage: envbuilderImageRef,
 		CacheRepo:    reg + "/test",
 		RepoDir:      repoDir,
+		RepoURL:      fmt.Sprintf("ssh://git@localhost:%s/srv/git/repo.git", sshPort),
 		GitImage:     gitImageRef,
 		SSHDir:       sshDir,
+		SSHPort:      sshPort,
 	}
 }
 
@@ -120,9 +127,6 @@ func seedCache(ctx context.Context, t testing.TB, deps testDependencies) {
 	ensureImage(ctx, t, cli, deps.GitImage)
 	ensureImage(ctx, t, cli, deps.BuilderImage)
 
-	// TODO(mafredri): Use a dynamic port?
-	sshPort := "2222"
-
 	gitCtr, err := cli.ContainerCreate(ctx, &container.Config{
 		Image: deps.GitImage,
 		Env: []string{
@@ -133,7 +137,7 @@ func seedCache(ctx context.Context, t testing.TB, deps testDependencies) {
 		},
 	}, &container.HostConfig{
 		PortBindings: nat.PortMap{
-			"22/tcp": []nat.PortBinding{{HostIP: "localhost", HostPort: sshPort}},
+			"22/tcp": []nat.PortBinding{{HostIP: "localhost", HostPort: deps.SSHPort}},
 		},
 		Binds: []string{
 			deps.RepoDir + ":/srv/git/repo.git",
@@ -159,7 +163,7 @@ func seedCache(ctx context.Context, t testing.TB, deps testDependencies) {
 			"ENVBUILDER_INIT_SCRIPT=exit",
 			"ENVBUILDER_PUSH_IMAGE=true",
 			"ENVBUILDER_VERBOSE=true",
-			fmt.Sprintf("ENVBUILDER_GIT_URL=ssh://git@localhost:%s/srv/git/repo.git", sshPort),
+			"ENVBUILDER_GIT_URL=" + deps.RepoURL,
 			"ENVBUILDER_GIT_SSH_PRIVATE_KEY_PATH=/tmp/ssh/id_ed25519",
 		},
 		Labels: map[string]string{
