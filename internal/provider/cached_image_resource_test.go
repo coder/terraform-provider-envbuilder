@@ -27,7 +27,7 @@ func TestAccCachedImageDataSource(t *testing.T) {
 
 		deps := setup(ctx, t, files)
 		seedCache(ctx, t, deps)
-		tfCfg := fmt.Sprintf(`data "envbuilder_cached_image" "test" {
+		tfCfg := fmt.Sprintf(`resource "envbuilder_cached_image" "test" {
 	builder_image = %q
 	workspace_folder = %q
 	git_url = %q
@@ -46,15 +46,15 @@ func TestAccCachedImageDataSource(t *testing.T) {
 					Config: tfCfg,
 					Check: resource.ComposeAggregateTestCheckFunc(
 						// Inputs should still be present.
-						resource.TestCheckResourceAttr("data.envbuilder_cached_image.test", "cache_repo", deps.CacheRepo),
-						resource.TestCheckResourceAttr("data.envbuilder_cached_image.test", "extra_env.FOO", "bar"),
-						resource.TestCheckResourceAttr("data.envbuilder_cached_image.test", "git_url", deps.Repo.URL),
+						resource.TestCheckResourceAttr("envbuilder_cached_image.test", "cache_repo", deps.CacheRepo),
+						resource.TestCheckResourceAttr("envbuilder_cached_image.test", "extra_env.FOO", "bar"),
+						resource.TestCheckResourceAttr("envbuilder_cached_image.test", "git_url", deps.Repo.URL),
 						// Should be empty
-						resource.TestCheckNoResourceAttr("data.envbuilder_cached_image.test", "git_username"),
-						resource.TestCheckNoResourceAttr("data.envbuilder_cached_image.test", "git_password"),
-						resource.TestCheckNoResourceAttr("data.envbuilder_cached_image.test", "cache_ttl_days"),
+						resource.TestCheckNoResourceAttr("envbuilder_cached_image.test", "git_username"),
+						resource.TestCheckNoResourceAttr("envbuilder_cached_image.test", "git_password"),
+						resource.TestCheckNoResourceAttr("envbuilder_cached_image.test", "cache_ttl_days"),
 						// Computed
-						resource.TestCheckResourceAttrWith("data.envbuilder_cached_image.test", "id", func(value string) error {
+						resource.TestCheckResourceAttrWith("envbuilder_cached_image.test", "id", func(value string) error {
 							// value is enclosed in quotes
 							value = strings.Trim(value, `"`)
 							if !strings.HasPrefix(value, "sha256:") {
@@ -62,9 +62,9 @@ func TestAccCachedImageDataSource(t *testing.T) {
 							}
 							return nil
 						}),
-						resource.TestCheckResourceAttr("data.envbuilder_cached_image.test", "exists", "true"),
-						resource.TestCheckResourceAttrSet("data.envbuilder_cached_image.test", "image"),
-						resource.TestCheckResourceAttrWith("data.envbuilder_cached_image.test", "image", func(value string) error {
+						resource.TestCheckResourceAttr("envbuilder_cached_image.test", "exists", "true"),
+						resource.TestCheckResourceAttrSet("envbuilder_cached_image.test", "image"),
+						resource.TestCheckResourceAttrWith("envbuilder_cached_image.test", "image", func(value string) error {
 							// value is enclosed in quotes
 							value = strings.Trim(value, `"`)
 							if !strings.HasPrefix(value, deps.CacheRepo) {
@@ -72,7 +72,7 @@ func TestAccCachedImageDataSource(t *testing.T) {
 							}
 							return nil
 						}),
-						resource.TestCheckResourceAttr("data.envbuilder_cached_image.test", "env.0", "FOO=\"bar\""),
+						resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.0", "FOO=\"bar\""),
 					),
 				},
 			},
@@ -89,7 +89,7 @@ func TestAccCachedImageDataSource(t *testing.T) {
 		}
 		deps := setup(ctx, t, files)
 		// We do not seed the cache.
-		tfCfg := fmt.Sprintf(`data "envbuilder_cached_image" "test" {
+		tfCfg := fmt.Sprintf(`resource "envbuilder_cached_image" "test" {
 	builder_image = %q
 	workspace_folder = %q
 	git_url = %q
@@ -108,18 +108,18 @@ func TestAccCachedImageDataSource(t *testing.T) {
 					Config: tfCfg,
 					Check: resource.ComposeAggregateTestCheckFunc(
 						// Inputs should still be present.
-						resource.TestCheckResourceAttr("data.envbuilder_cached_image.test", "cache_repo", deps.CacheRepo),
-						resource.TestCheckResourceAttr("data.envbuilder_cached_image.test", "extra_env.FOO", "bar"),
-						resource.TestCheckResourceAttr("data.envbuilder_cached_image.test", "git_url", deps.Repo.URL),
-						resource.TestCheckResourceAttr("data.envbuilder_cached_image.test", "exists", "false"),
-						resource.TestCheckResourceAttr("data.envbuilder_cached_image.test", "image", deps.BuilderImage),
+						resource.TestCheckResourceAttr("envbuilder_cached_image.test", "cache_repo", deps.CacheRepo),
+						resource.TestCheckResourceAttr("envbuilder_cached_image.test", "extra_env.FOO", "bar"),
+						resource.TestCheckResourceAttr("envbuilder_cached_image.test", "git_url", deps.Repo.URL),
+						resource.TestCheckResourceAttr("envbuilder_cached_image.test", "exists", "false"),
+						resource.TestCheckResourceAttr("envbuilder_cached_image.test", "image", deps.BuilderImage),
 						// Should be empty
-						resource.TestCheckNoResourceAttr("data.envbuilder_cached_image.test", "git_username"),
-						resource.TestCheckNoResourceAttr("data.envbuilder_cached_image.test", "git_password"),
-						resource.TestCheckNoResourceAttr("data.envbuilder_cached_image.test", "cache_ttl_days"),
+						resource.TestCheckNoResourceAttr("envbuilder_cached_image.test", "git_username"),
+						resource.TestCheckNoResourceAttr("envbuilder_cached_image.test", "git_password"),
+						resource.TestCheckNoResourceAttr("envbuilder_cached_image.test", "cache_ttl_days"),
 						// Computed values should be empty.
-						resource.TestCheckNoResourceAttr("data.envbuilder_cached_image.test", "id"),
-						resource.TestCheckResourceAttrSet("data.envbuilder_cached_image.test", "env.0"),
+						resource.TestCheckNoResourceAttr("envbuilder_cached_image.test", "id"),
+						resource.TestCheckResourceAttrSet("envbuilder_cached_image.test", "env.0"),
 					),
 				},
 			},

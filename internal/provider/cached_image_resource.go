@@ -20,28 +20,30 @@ import (
 	"github.com/go-git/go-billy/v5/osfs"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
+	"github.com/google/uuid"
 
-	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
-var _ datasource.DataSource = &CachedImageDataSource{}
+var _ resource.Resource = &CachedImageResource{}
 
-func NewCachedImageDataSource() datasource.DataSource {
-	return &CachedImageDataSource{}
+func NewCachedImageResource() resource.Resource {
+	return &CachedImageResource{}
 }
 
-// CachedImageDataSource defines the data source implementation.
-type CachedImageDataSource struct {
+// CachedImageResource defines the data source implementation.
+type CachedImageResource struct {
 	client *http.Client
 }
 
-// CachedImageDataSourceModel describes the data source data model.
-type CachedImageDataSourceModel struct {
+// CachedImageResourceModel describes the data source data model.
+type CachedImageResourceModel struct {
 	// Required "inputs".
 	BuilderImage types.String `tfsdk:"builder_image"`
 	CacheRepo    types.String `tfsdk:"cache_repo"`
@@ -75,11 +77,11 @@ type CachedImageDataSourceModel struct {
 	Image  types.String `tfsdk:"image"`
 }
 
-func (d *CachedImageDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+func (r *CachedImageResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_cached_image"
 }
 
-func (d *CachedImageDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+func (r *CachedImageResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		// This description is used by the documentation generator and the language server.
 		MarkdownDescription: "The cached image data source can be used to retrieve a cached image produced by envbuilder. Reading from this data source will clone the specified Git repository, read a Devcontainer specification or Dockerfile, and check for its presence in the provided cache repo.",
@@ -213,7 +215,7 @@ func (d *CachedImageDataSource) Schema(ctx context.Context, req datasource.Schem
 	}
 }
 
-func (d *CachedImageDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+func (r *CachedImageResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	// Prevent panic if the provider has not been configured.
 	if req.ProviderData == nil {
 		return
@@ -230,31 +232,83 @@ func (d *CachedImageDataSource) Configure(ctx context.Context, req datasource.Co
 		return
 	}
 
-	d.client = client
+	r.client = client
 }
 
-func (d *CachedImageDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var data CachedImageDataSourceModel
+func (r *CachedImageResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var data CachedImageResourceModel
 
 	// Read Terraform configuration data into the model
-	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	// If applicable, this is a great opportunity to initialize any necessary
-	// provider client data and make a call using it.
-	// httpResp, err := d.client.Do(httpReq)
-	// if err != nil {
-	//     resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read cached image, got error: %s", err))
-	//     return
-	// }
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	return
+}
 
+func (r *CachedImageResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	var data CachedImageResourceModel
+
+	// Read Terraform plan data into the model
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
+
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Create a random UUID for the resource type.
+	data.ID = types.StringValue(uuid.NewString())
+
+	cachedImg, err := r.runCacheProbe(ctx, data)
+	if err != nil {
+		// FIXME: there are legit errors that can crop up here.
+		// We should add a sentinel error in Kaniko for uncached layers, and check
+		// it here.
+		resp.Diagnostics.AddWarning("Cached Image Not Found", fmt.Sprintf("Unable to check for cached image: %s", err.Error()))
+		data.Image = data.BuilderImage
+	} else if digest, err := cachedImg.Digest(); err != nil {
+		// There's something seriously up with this image!
+		resp.Diagnostics.AddError("Failed to get cached image digest", err.Error())
+		return
+	} else {
+		tflog.Info(ctx, fmt.Sprintf("found image: %s@%s", data.CacheRepo.ValueString(), digest))
+		data.Image = types.StringValue(fmt.Sprintf("%s@%s", data.CacheRepo.ValueString(), digest))
+		data.Exists = types.BoolValue(err == nil)
+	}
+	// Compute the env attribute from the config map.
+	// TODO(mafredri): Convert any other relevant attributes given via schema.
+	for key, elem := range data.ExtraEnv.Elements() {
+		data.Env = appendKnownEnvToList(data.Env, key, elem)
+	}
+
+	data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_CACHE_REPO", data.CacheRepo)
+	data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_CACHE_TTL_DAYS", data.CacheTTLDays)
+	data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_GIT_URL", data.GitURL)
+	data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_GIT_USERNAME", data.GitUsername)
+	data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_GIT_PASSWORD", data.GitPassword)
+
+	// Save data into Terraform state
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+func (r *CachedImageResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+
+}
+
+func (r *CachedImageResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+
+}
+
+// runCacheProbe performs a 'fake build' of the requested image and ensures that
+// all of the resulting layers of the image are present in the configured cache
+// repo. Otherwise, returns an error.
+func (r *CachedImageResource) runCacheProbe(ctx context.Context, data CachedImageResourceModel) (v1.Image, error) {
 	tmpDir, err := os.MkdirTemp(os.TempDir(), "envbuilder-provider-cached-image-data-source")
 	if err != nil {
-		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to create temp directory: %s", err.Error()))
-		return
+		return nil, fmt.Errorf("Unable to create temp directory: %s", err.Error())
 	}
 	defer func() {
 		if err := os.RemoveAll(tmpDir); err != nil {
@@ -271,18 +325,17 @@ func (d *CachedImageDataSource) Read(ctx context.Context, req datasource.ReadReq
 		kconfig.KanikoDir = oldKanikoDir
 		tflog.Info(ctx, "restored kaniko dir to "+oldKanikoDir)
 	}()
+
 	if err := os.MkdirAll(tmpKanikoDir, 0o755); err != nil {
-		tflog.Error(ctx, "failed to create kaniko dir: "+err.Error())
-		return
+		return nil, fmt.Errorf("failed to create kaniko dir: %w", err)
 	}
 
 	// In order to correctly reproduce the final layer of the cached image, we
 	// need the envbuilder binary used to originally build the image!
 	envbuilderPath := filepath.Join(tmpDir, "envbuilder")
-	if err := extractEnvbuilderFromImage(ctx, data.BuilderImage.ValueString(), envbuilderPath); err != nil {
+	if err := r.extractEnvbuilderFromImage(ctx, data.BuilderImage.ValueString(), envbuilderPath); err != nil {
 		tflog.Error(ctx, "failed to fetch envbuilder binary from builder image", map[string]any{"err": err})
-		resp.Diagnostics.AddError("Internal Error", fmt.Sprintf("Failed to fetch the envbuilder binary from the builder image: %s", err.Error()))
-		return
+		return nil, fmt.Errorf("Failed to fetch the envbuilder binary from the builder image: %s", err.Error())
 	}
 
 	workspaceFolder := data.WorkspaceFolder.ValueString()
@@ -295,15 +348,13 @@ func (d *CachedImageDataSource) Read(ctx context.Context, req datasource.ReadReq
 	// This may require changing this to be a resource instead of a data source.
 	opts := eboptions.Options{
 		// These options are always required
-		CacheRepo:           data.CacheRepo.ValueString(),
-		Filesystem:          osfs.New("/"),
-		ForceSafe:           false, // This should never be set to true, as this may be running outside of a container!
-		GetCachedImage:      true,  // always!
-		Logger:              tfLogFunc(ctx),
-		Verbose:             data.Verbose.ValueBool(),
-		WorkspaceFolder:     workspaceFolder,
-		RemoteRepoBuildMode: true,
-		RemoteRepoDir:       filepath.Join(tmpDir, "repo"), // Hidden option used by this provider.
+		CacheRepo:       data.CacheRepo.ValueString(),
+		Filesystem:      osfs.New("/"),
+		ForceSafe:       false, // This should never be set to true, as this may be running outside of a container!
+		GetCachedImage:  true,  // always!
+		Logger:          tfLogFunc(ctx),
+		Verbose:         data.Verbose.ValueBool(),
+		WorkspaceFolder: workspaceFolder,
 
 		// Options related to compiling the devcontainer
 		BuildContextPath:     data.BuildContextPath.ValueString(),
@@ -345,103 +396,19 @@ func (d *CachedImageDataSource) Read(ctx context.Context, req datasource.ReadReq
 		SkipRebuild:         false,
 	}
 
-	image, err := envbuilder.RunCacheProbe(ctx, opts)
-	data.Exists = types.BoolValue(err == nil)
-	if err != nil {
-		resp.Diagnostics.AddWarning("Cached image not found", err.Error())
-		// TODO: Get the repo digest of the envbuilder image and use that as the ID
-		data.Image = data.BuilderImage
-	} else {
-		digest, err := image.Digest()
-		if err != nil {
-			resp.Diagnostics.AddError("Failed to get cached image digest", err.Error())
-			return
-		}
-		tflog.Info(ctx, fmt.Sprintf("found image: %s@%s", opts.CacheRepo, digest))
-		data.ID = types.StringValue(digest.String())
-		data.Image = types.StringValue(fmt.Sprintf("%s@%s", opts.CacheRepo, digest))
-	}
-
-	// Compute the env attribute from the config map.
-	// TODO(mafredri): Convert any other relevant attributes given via schema.
-	for key, elem := range data.ExtraEnv.Elements() {
-		data.Env = appendKnownEnvToList(data.Env, key, elem)
-	}
-
-	data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_CACHE_REPO", data.CacheRepo)
-	data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_CACHE_TTL_DAYS", data.CacheTTLDays)
-	data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_GIT_URL", data.GitURL)
-	data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_GIT_USERNAME", data.GitUsername)
-	data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_GIT_PASSWORD", data.GitPassword)
-
-	// Write logs using the tflog package
-	// Documentation: https://terraform.io/plugin/log
-	tflog.Trace(ctx, "read a data source")
-
-	// Save data into Terraform state
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
-}
-
-// tfLogFunc is an adapter to envbuilder/log.Func.
-func tfLogFunc(ctx context.Context) eblog.Func {
-	return func(level eblog.Level, format string, args ...any) {
-		var logFn func(context.Context, string, ...map[string]interface{})
-		switch level {
-		case eblog.LevelTrace:
-			logFn = tflog.Trace
-		case eblog.LevelDebug:
-			logFn = tflog.Debug
-		case eblog.LevelWarn:
-			logFn = tflog.Warn
-		case eblog.LevelError:
-			logFn = tflog.Error
-		default:
-			logFn = tflog.Info
-		}
-		logFn(ctx, fmt.Sprintf(format, args...))
-	}
-}
-
-// NOTE: the String() method of Terraform values will evalue to `<null>` if unknown.
-// Check IsUnknown() first before calling String().
-type stringable interface {
-	IsUnknown() bool
-	String() string
-}
-
-func appendKnownEnvToList(list types.List, key string, value stringable) types.List {
-	if value.IsUnknown() {
-		return list
-	}
-	elem := types.StringValue(fmt.Sprintf("%s=%s", key, value.String()))
-	list, _ = types.ListValue(types.StringType, append(list.Elements(), elem))
-	return list
-}
-
-func tfListToStringSlice(l types.List) []string {
-	var ss []string
-	for _, el := range l.Elements() {
-		if sv, ok := el.(stringable); !ok {
-			panic(fmt.Sprintf("developer error: element %+v must be stringable", el))
-		} else if sv.IsUnknown() {
-			ss = append(ss, "")
-		} else {
-			ss = append(ss, sv.String())
-		}
-	}
-	return ss
+	return envbuilder.RunCacheProbe(ctx, opts)
 }
 
 // extractEnvbuilderFromImage reads the image located at imgRef and extracts
 // MagicBinaryLocation to destPath.
-func extractEnvbuilderFromImage(ctx context.Context, imgRef, destPath string) error {
+func (r *CachedImageResource) extractEnvbuilderFromImage(ctx context.Context, imgRef, destPath string) error {
 	needle := filepath.Clean(constants.MagicBinaryLocation)[1:] // skip leading '/'
 	ref, err := name.ParseReference(imgRef)
 	if err != nil {
 		return fmt.Errorf("parse reference: %w", err)
 	}
 
-	img, err := remote.Image(ref, remote.WithAuthFromKeychain(authn.DefaultKeychain))
+	img, err := remote.Image(ref, remote.WithAuthFromKeychain(authn.DefaultKeychain), remote.WithTransport(r.client.Transport))
 	if err != nil {
 		return fmt.Errorf("check remote image: %w", err)
 	}
@@ -506,4 +473,54 @@ func extractEnvbuilderFromImage(ctx context.Context, imgRef, destPath string) er
 	}
 
 	return fmt.Errorf("extract envbuilder binary from image %q: %w", imgRef, os.ErrNotExist)
+}
+
+// NOTE: the String() method of Terraform values will evalue to `<null>` if unknown.
+// Check IsUnknown() first before calling String().
+type stringable interface {
+	IsUnknown() bool
+	String() string
+}
+
+func appendKnownEnvToList(list types.List, key string, value stringable) types.List {
+	if value.IsUnknown() {
+		return list
+	}
+	elem := types.StringValue(fmt.Sprintf("%s=%s", key, value.String()))
+	list, _ = types.ListValue(types.StringType, append(list.Elements(), elem))
+	return list
+}
+
+func tfListToStringSlice(l types.List) []string {
+	var ss []string
+	for _, el := range l.Elements() {
+		if sv, ok := el.(stringable); !ok {
+			panic(fmt.Sprintf("developer error: element %+v must be stringable", el))
+		} else if sv.IsUnknown() {
+			ss = append(ss, "")
+		} else {
+			ss = append(ss, sv.String())
+		}
+	}
+	return ss
+}
+
+// tfLogFunc is an adapter to envbuilder/log.Func.
+func tfLogFunc(ctx context.Context) eblog.Func {
+	return func(level eblog.Level, format string, args ...any) {
+		var logFn func(context.Context, string, ...map[string]interface{})
+		switch level {
+		case eblog.LevelTrace:
+			logFn = tflog.Trace
+		case eblog.LevelDebug:
+			logFn = tflog.Debug
+		case eblog.LevelWarn:
+			logFn = tflog.Warn
+		case eblog.LevelError:
+			logFn = tflog.Error
+		default:
+			logFn = tflog.Info
+		}
+		logFn(ctx, fmt.Sprintf(format, args...))
+	}
 }

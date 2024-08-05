@@ -61,13 +61,11 @@ func (p *EnvbuilderProvider) Configure(ctx context.Context, req provider.Configu
 }
 
 func (p *EnvbuilderProvider) Resources(ctx context.Context) []func() resource.Resource {
-	return []func() resource.Resource{}
+	return []func() resource.Resource{NewCachedImageResource}
 }
 
 func (p *EnvbuilderProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
-	return []func() datasource.DataSource{
-		NewCachedImageDataSource,
-	}
+	return []func() datasource.DataSource{}
 }
 
 func (p *EnvbuilderProvider) Functions(ctx context.Context) []func() function.Function {
