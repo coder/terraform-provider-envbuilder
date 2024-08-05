@@ -151,12 +151,15 @@ func ensureImage(ctx context.Context, t testing.TB, cli *client.Client, ref stri
 	images, err := cli.ImageList(ctx, image.ListOptions{})
 	require.NoError(t, err, "list images")
 	for _, img := range images {
-		if slices.Contains(img.RepoTags, ref) {
+		if strings.HasSuffix(ref, ":latest") {
+			t.Logf("always pull latest")
+			break
+		} else if slices.Contains(img.RepoTags, ref) {
 			t.Logf("image %q found locally, not pulling", ref)
 			return
 		}
 	}
-	t.Logf("image %s not found locally, attempting to pull", ref)
+	t.Logf("attempting to pull image %q", ref)
 	resp, err := cli.ImagePull(ctx, ref, image.PullOptions{})
 	require.NoError(t, err)
 	_, err = io.ReadAll(resp)
