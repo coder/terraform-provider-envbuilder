@@ -92,7 +92,7 @@ func serveGitRepoSSH(ctx context.Context, t testing.TB, dir string) testGitRepoS
 	require.NoError(t, os.WriteFile(keyPath, []byte(testSSHKey), 0o600))
 
 	// Start SSH server
-	addr := startSSHServer(ctx, t, sshDir)
+	addr := startSSHServer(ctx, t)
 
 	// Serve git repo
 	repoURL := "ssh://" + addr + dir
@@ -103,7 +103,7 @@ func serveGitRepoSSH(ctx context.Context, t testing.TB, dir string) testGitRepoS
 	}
 }
 
-func startSSHServer(ctx context.Context, t testing.TB, dir string) string {
+func startSSHServer(ctx context.Context, t testing.TB) string {
 	t.Helper()
 
 	s := &ssh.Server{
