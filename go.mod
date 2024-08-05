@@ -10,9 +10,11 @@ replace tailscale.com => github.com/coder/tailscale v1.1.1-0.20240702054557-aa55
 
 require (
 	github.com/GoogleContainerTools/kaniko v1.9.2
-	github.com/coder/envbuilder v1.0.0-rc.0.0.20240803183847-6afe89e6950e
+	github.com/coder/envbuilder v1.0.0-rc.0.0.20240805094524-c1f9917dfb61
 	github.com/docker/docker v26.1.4+incompatible
+	github.com/docker/go-connections v0.5.0
 	github.com/go-git/go-billy/v5 v5.5.0
+	github.com/go-git/go-git/v5 v5.12.0
 	github.com/google/go-containerregistry v0.19.1
 	github.com/hashicorp/terraform-plugin-docs v0.19.4
 	github.com/hashicorp/terraform-plugin-framework v1.10.0
@@ -115,7 +117,6 @@ require (
 	github.com/docker/cli v26.1.0+incompatible // indirect
 	github.com/docker/distribution v2.8.2+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.8.1 // indirect
-	github.com/docker/go-connections v0.5.0 // indirect
 	github.com/docker/go-events v0.0.0-20190806004212-e31b211e4f1c // indirect
 	github.com/docker/go-metrics v0.0.1 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
@@ -128,7 +129,6 @@ require (
 	github.com/fxamacker/cbor/v2 v2.4.0 // indirect
 	github.com/go-chi/chi/v5 v5.0.10 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
-	github.com/go-git/go-git/v5 v5.12.0 // indirect
 	github.com/go-jose/go-jose/v4 v4.0.1 // indirect
 	github.com/go-logr/logr v1.4.1 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
