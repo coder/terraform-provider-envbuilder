@@ -30,12 +30,13 @@ func TestAccCachedImageDataSource(t *testing.T) {
 	builder_image = %q
 	workspace_folder = %q
 	git_url = %q
+	git_ssh_private_key_path = %q
 	extra_env = {
 	"FOO" : "bar"
 	}
 	cache_repo = %q
 	verbose = true
-}`, deps.BuilderImage, "/workspace", deps.RepoURL, deps.CacheRepo)
+}`, deps.BuilderImage, "/workspace", deps.RepoURL, deps.SSHKey, deps.CacheRepo)
 		resource.Test(t, resource.TestCase{
 			PreCheck:                 func() { testAccPreCheck(t) },
 			ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
@@ -89,12 +90,13 @@ func TestAccCachedImageDataSource(t *testing.T) {
 	builder_image = %q
 	workspace_folder = %q
 	git_url = %q
+	git_ssh_private_key_path = %q
 	extra_env = {
 	"FOO" : "bar"
 	}
 	cache_repo = %q
 	verbose = true
-}`, deps.BuilderImage, "/workspace", deps.RepoURL, deps.CacheRepo)
+}`, deps.BuilderImage, "/workspace", deps.RepoURL, deps.SSHKey, deps.CacheRepo)
 		resource.Test(t, resource.TestCase{
 			PreCheck:                 func() { testAccPreCheck(t) },
 			ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,

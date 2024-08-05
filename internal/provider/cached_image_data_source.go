@@ -303,6 +303,7 @@ func (d *CachedImageDataSource) Read(ctx context.Context, req datasource.ReadReq
 		Verbose:             data.Verbose.ValueBool(),
 		WorkspaceFolder:     workspaceFolder,
 		RemoteRepoBuildMode: true,
+		RemoteRepoDir:       filepath.Join(tmpDir, "repo"), // Hidden option used by this provider.
 
 		// Options related to compiling the devcontainer
 		BuildContextPath:     data.BuildContextPath.ValueString(),

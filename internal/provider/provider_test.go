@@ -76,6 +76,7 @@ type testDependencies struct {
 	GitImage     string
 	SSHDir       string
 	SSHPort      string
+	SSHKey       string
 }
 
 func setup(t testing.TB, files map[string]string) testDependencies {
@@ -111,6 +112,7 @@ func setup(t testing.TB, files map[string]string) testDependencies {
 		GitImage:     gitImageRef,
 		SSHDir:       sshDir,
 		SSHPort:      sshPort,
+		SSHKey:       filepath.Join(sshDir, "id_ed25519"),
 	}
 }
 
