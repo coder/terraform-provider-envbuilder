@@ -163,7 +163,6 @@ func seedCache(ctx context.Context, t testing.TB, deps testDependencies) {
 	}, &container.HostConfig{
 		NetworkMode: container.NetworkMode("host"),
 		Binds: []string{
-			// deps.RepoDir + ":" + "/workspaces/empty",
 			deps.SSHDir + ":/tmp/ssh",
 		},
 	}, nil, nil, "")
