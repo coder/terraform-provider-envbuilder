@@ -147,7 +147,10 @@ func startSSHServer(ctx context.Context, t testing.TB, dir string) string {
 
 			t.Logf("session ended: %s", s.RawCommand())
 
-			s.Exit(cmd.ProcessState.ExitCode())
+			err = s.Exit(cmd.ProcessState.ExitCode())
+			if err != nil {
+				t.Logf("session exit failed: %s", err)
+			}
 		},
 	}
 
