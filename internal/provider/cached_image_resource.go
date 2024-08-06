@@ -242,27 +242,29 @@ func (r *CachedImageResource) Read(ctx context.Context, req resource.ReadRequest
 
 	// Read Terraform configuration data into the model
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
-
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	data.Image = data.BuilderImage
+	// If the computed attribute 'image' has not been set, then there is nothing
+	// to read!
 	if data.Image.IsUnknown() {
 		return
 	}
 
+	// Attempt to fetch the image manifest.
 	img, err := getRemoteImage(data.Image.ValueString())
 	if err != nil {
-		if !strings.Contains(err.Error(), "NAME_UNKNOWN") {
+		if !strings.Contains(err.Error(), "MANIFEST_UNKNOWN") {
 			resp.Diagnostics.AddError("Error checking remote image", err.Error())
 			return
 		}
+		tflog.Debug(ctx, "Remote image does not exist", map[string]any{"ref": data.Image.ValueString()})
 		// Image does not exist
 		return
 	}
 
-	// Found image!
+	// Found image! Get the digest.
 	digest, err := img.Digest()
 	if err != nil {
 		resp.Diagnostics.AddError("Error fetching image digest", err.Error())
@@ -273,15 +275,22 @@ func (r *CachedImageResource) Read(ctx context.Context, req resource.ReadRequest
 	data.Image = types.StringValue(fmt.Sprintf("%s@%s", data.CacheRepo.ValueString(), digest))
 	data.Exists = types.BoolValue(true)
 
+	// Set the expected environment variables.
 	for key, elem := range data.ExtraEnv.Elements() {
 		data.Env = appendKnownEnvToList(data.Env, key, elem)
 	}
 
 	data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_CACHE_REPO", data.CacheRepo)
-	data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_CACHE_TTL_DAYS", data.CacheTTLDays)
 	data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_GIT_URL", data.GitURL)
-	data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_GIT_USERNAME", data.GitUsername)
-	data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_GIT_PASSWORD", data.GitPassword)
+	if !data.CacheTTLDays.IsNull() {
+		data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_CACHE_TTL_DAYS", data.CacheTTLDays)
+	}
+	if !data.GitUsername.IsNull() {
+		data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_GIT_USERNAME", data.GitUsername)
+	}
+	if !data.GitPassword.IsNull() {
+		data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_GIT_PASSWORD", data.GitPassword)
+	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
