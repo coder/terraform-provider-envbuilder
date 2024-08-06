@@ -14,8 +14,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
-// TODO: change this to only test for a non-existent image.
-// Move the heavy lifting to integration.
 func TestAccCachedImageDataSource(t *testing.T) {
 	t.Run("Found", func(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
@@ -28,23 +26,13 @@ func TestAccCachedImageDataSource(t *testing.T) {
 
 		deps := setup(ctx, t, files)
 		seedCache(ctx, t, deps)
-		tfCfg := fmt.Sprintf(`resource "envbuilder_cached_image" "test" {
-	builder_image = %q
-	workspace_folder = %q
-	git_url = %q
-	git_ssh_private_key_path = %q
-	extra_env = {
-	"FOO" : "bar"
-	}
-	cache_repo = %q
-	verbose = true
-}`, deps.BuilderImage, deps.Repo.Dir, deps.Repo.URL, deps.Repo.Key, deps.CacheRepo)
+		deps.ExtraEnv["FOO"] = "bar"
 		resource.Test(t, resource.TestCase{
 			PreCheck:                 func() { testAccPreCheck(t) },
 			ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 			Steps: []resource.TestStep{
 				{
-					Config: tfCfg,
+					Config: deps.Config(t),
 					Check: resource.ComposeAggregateTestCheckFunc(
 						// Inputs should still be present.
 						resource.TestCheckResourceAttr("envbuilder_cached_image.test", "cache_repo", deps.CacheRepo),
@@ -89,24 +77,14 @@ func TestAccCachedImageDataSource(t *testing.T) {
 	RUN date > /date.txt`,
 		}
 		deps := setup(ctx, t, files)
+		deps.ExtraEnv["FOO"] = "bar"
 		// We do not seed the cache.
-		tfCfg := fmt.Sprintf(`resource "envbuilder_cached_image" "test" {
-	builder_image = %q
-	workspace_folder = %q
-	git_url = %q
-	git_ssh_private_key_path = %q
-	extra_env = {
-	"FOO" : "bar"
-	}
-	cache_repo = %q
-	verbose = true
-}`, deps.BuilderImage, deps.Repo.Dir, deps.Repo.URL, deps.Repo.Key, deps.CacheRepo)
 		resource.Test(t, resource.TestCase{
 			PreCheck:                 func() { testAccPreCheck(t) },
 			ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 			Steps: []resource.TestStep{
 				{
-					Config: tfCfg,
+					Config: deps.Config(t),
 					Check: resource.ComposeAggregateTestCheckFunc(
 						// Computed values MUST be present.
 						resource.TestCheckResourceAttr("envbuilder_cached_image.test", "id", uuid.Nil.String()),

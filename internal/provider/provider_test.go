@@ -6,11 +6,13 @@ package provider
 import (
 	"bufio"
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"slices"
 	"strings"
 	"testing"
+	"text/template"
 
 	"github.com/coder/terraform-provider-envbuilder/testutil/registrytest"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
@@ -40,10 +42,54 @@ func testAccPreCheck(t *testing.T) {
 	// function.
 }
 
+// testDependencies contain information about stuff the test depends on.
 type testDependencies struct {
 	BuilderImage string
 	CacheRepo    string
+	ExtraEnv     map[string]string
 	Repo         testGitRepoSSH
+}
+
+// Config generates a valid Terraform config file from the dependencies.
+func (d *testDependencies) Config(t testing.TB) string {
+	t.Helper()
+
+	tpl := `provider envbuilder {}
+resource "envbuilder_cached_image" "test" {
+  builder_image            = {{ quote .BuilderImage }}
+	cache_repo               = {{ quote .CacheRepo }}
+	extra_env                = {{ tfMap .ExtraEnv }}
+	git_url                  = {{ quote .Repo.URL }}
+	git_ssh_private_key_path = {{ quote .Repo.Key }}
+	verbose                  = true
+	workspace_folder         = {{ quote .Repo.Dir }}
+}`
+
+	fm := template.FuncMap{"tfMap": tfMap, "quote": quote}
+	var sb strings.Builder
+	tmpl, err := template.New("envbuilder_cached_image").Funcs(fm).Parse(tpl)
+	require.NoError(t, err)
+	require.NoError(t, tmpl.Execute(&sb, d))
+	return sb.String()
+}
+
+func tfMap(m map[string]string) string {
+	var sb strings.Builder
+	_, _ = sb.WriteRune('{')
+	_, _ = sb.WriteRune('\n')
+	for k, v := range m {
+		_, _ = sb.WriteString(fmt.Sprintf("%q", k))
+		_, _ = sb.WriteRune(':')
+		_, _ = sb.WriteRune(' ')
+		_, _ = sb.WriteString(fmt.Sprintf("%q", v))
+		_, _ = sb.WriteRune('\n')
+	}
+	_, _ = sb.WriteRune('}')
+	return sb.String()
+}
+
+func quote(s string) string {
+	return fmt.Sprintf("%q", s)
 }
 
 func setup(ctx context.Context, t testing.TB, files map[string]string) testDependencies {
@@ -64,6 +110,7 @@ func setup(ctx context.Context, t testing.TB, files map[string]string) testDepen
 	return testDependencies{
 		BuilderImage: envbuilderImageRef,
 		CacheRepo:    reg + "/test",
+		ExtraEnv:     make(map[string]string),
 		Repo:         gitRepo,
 	}
 }
