@@ -1,4 +1,15 @@
-data "envbuilder_cached_image" "example" {
+terraform {
+  required_providers {
+    envbuilder = {
+      source = "coder/envbuilder"
+    }
+    docker = {
+      source = "kreuzwerker/docker"
+    }
+  }
+}
+
+resource "envbuilder_cached_image" "example" {
   builder_image = "ghcr.io/coder/envbuilder:latest"
   git_url       = "https://github.com/coder/envbuilder-starter-devcontainer"
   cache_repo    = "localhost:5000/local/test-cache"
@@ -9,5 +20,6 @@ data "envbuilder_cached_image" "example" {
 
 resource "docker_container" "container" {
   image = envbuilder_cached_image.example.image
-  env   = data.envbuilder_image.cached.env
+  env   = envbuilder_cached_image.example.env
+  name  = "myenv"
 }
