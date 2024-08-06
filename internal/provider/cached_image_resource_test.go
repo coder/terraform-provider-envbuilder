@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
@@ -22,7 +23,7 @@ func TestAccCachedImageDataSource(t *testing.T) {
 		files := map[string]string{
 			".devcontainer/devcontainer.json": `{"build": { "dockerfile": "Dockerfile" }}`,
 			".devcontainer/Dockerfile": `FROM localhost:5000/test-ubuntu:latest
-	RUN apt-get update && apt-get install -y cowsay`,
+	RUN date > /date.txt`,
 		}
 
 		deps := setup(ctx, t, files)
@@ -37,7 +38,7 @@ func TestAccCachedImageDataSource(t *testing.T) {
 	}
 	cache_repo = %q
 	verbose = true
-}`, deps.BuilderImage, "/workspace", deps.Repo.URL, deps.Repo.Key, deps.CacheRepo)
+}`, deps.BuilderImage, deps.Repo.Dir, deps.Repo.URL, deps.Repo.Key, deps.CacheRepo)
 		resource.Test(t, resource.TestCase{
 			PreCheck:                 func() { testAccPreCheck(t) },
 			ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
@@ -85,7 +86,7 @@ func TestAccCachedImageDataSource(t *testing.T) {
 		files := map[string]string{
 			".devcontainer/devcontainer.json": `{"build": { "dockerfile": "Dockerfile" }}`,
 			".devcontainer/Dockerfile": `FROM localhost:5000/test-ubuntu:latest
-	RUN apt-get update && apt-get install -y cowsay`,
+	RUN date > /date.txt`,
 		}
 		deps := setup(ctx, t, files)
 		// We do not seed the cache.
@@ -99,7 +100,7 @@ func TestAccCachedImageDataSource(t *testing.T) {
 	}
 	cache_repo = %q
 	verbose = true
-}`, deps.BuilderImage, "/workspace", deps.Repo.URL, deps.Repo.Key, deps.CacheRepo)
+}`, deps.BuilderImage, deps.Repo.Dir, deps.Repo.URL, deps.Repo.Key, deps.CacheRepo)
 		resource.Test(t, resource.TestCase{
 			PreCheck:                 func() { testAccPreCheck(t) },
 			ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
@@ -107,19 +108,20 @@ func TestAccCachedImageDataSource(t *testing.T) {
 				{
 					Config: tfCfg,
 					Check: resource.ComposeAggregateTestCheckFunc(
+						// Computed values MUST be present.
+						resource.TestCheckResourceAttr("envbuilder_cached_image.test", "id", uuid.Nil.String()),
+						resource.TestCheckResourceAttr("envbuilder_cached_image.test", "exists", "false"),
+						resource.TestCheckResourceAttrSet("envbuilder_cached_image.test", "env.0"),
+						// Cached image should be set to the builder image.
+						resource.TestCheckResourceAttr("envbuilder_cached_image.test", "image", deps.BuilderImage),
 						// Inputs should still be present.
 						resource.TestCheckResourceAttr("envbuilder_cached_image.test", "cache_repo", deps.CacheRepo),
 						resource.TestCheckResourceAttr("envbuilder_cached_image.test", "extra_env.FOO", "bar"),
 						resource.TestCheckResourceAttr("envbuilder_cached_image.test", "git_url", deps.Repo.URL),
-						resource.TestCheckResourceAttr("envbuilder_cached_image.test", "exists", "false"),
-						resource.TestCheckResourceAttr("envbuilder_cached_image.test", "image", deps.BuilderImage),
 						// Should be empty
 						resource.TestCheckNoResourceAttr("envbuilder_cached_image.test", "git_username"),
 						resource.TestCheckNoResourceAttr("envbuilder_cached_image.test", "git_password"),
 						resource.TestCheckNoResourceAttr("envbuilder_cached_image.test", "cache_ttl_days"),
-						// Computed values should be empty.
-						resource.TestCheckNoResourceAttr("envbuilder_cached_image.test", "id"),
-						resource.TestCheckResourceAttrSet("envbuilder_cached_image.test", "env.0"),
 					),
 				},
 			},

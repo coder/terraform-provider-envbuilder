@@ -246,7 +246,6 @@ func (r *CachedImageResource) Read(ctx context.Context, req resource.ReadRequest
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
-	return
 }
 
 func (r *CachedImageResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -259,10 +258,9 @@ func (r *CachedImageResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	// Create a random UUID for the resource type.
-	data.ID = types.StringValue(uuid.NewString())
-
 	cachedImg, err := r.runCacheProbe(ctx, data)
+	data.ID = types.StringValue(uuid.Nil.String())
+	data.Exists = types.BoolValue(err == nil)
 	if err != nil {
 		// FIXME: there are legit errors that can crop up here.
 		// We should add a sentinel error in Kaniko for uncached layers, and check
@@ -276,7 +274,7 @@ func (r *CachedImageResource) Create(ctx context.Context, req resource.CreateReq
 	} else {
 		tflog.Info(ctx, fmt.Sprintf("found image: %s@%s", data.CacheRepo.ValueString(), digest))
 		data.Image = types.StringValue(fmt.Sprintf("%s@%s", data.CacheRepo.ValueString(), digest))
-		data.Exists = types.BoolValue(err == nil)
+		data.ID = types.StringValue(digest.String())
 	}
 	// Compute the env attribute from the config map.
 	// TODO(mafredri): Convert any other relevant attributes given via schema.
@@ -295,11 +293,9 @@ func (r *CachedImageResource) Create(ctx context.Context, req resource.CreateReq
 }
 
 func (r *CachedImageResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-
 }
 
 func (r *CachedImageResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-
 }
 
 // runCacheProbe performs a 'fake build' of the requested image and ensures that
@@ -333,7 +329,7 @@ func (r *CachedImageResource) runCacheProbe(ctx context.Context, data CachedImag
 	// In order to correctly reproduce the final layer of the cached image, we
 	// need the envbuilder binary used to originally build the image!
 	envbuilderPath := filepath.Join(tmpDir, "envbuilder")
-	if err := r.extractEnvbuilderFromImage(ctx, data.BuilderImage.ValueString(), envbuilderPath); err != nil {
+	if err := extractEnvbuilderFromImage(ctx, data.BuilderImage.ValueString(), envbuilderPath); err != nil {
 		tflog.Error(ctx, "failed to fetch envbuilder binary from builder image", map[string]any{"err": err})
 		return nil, fmt.Errorf("Failed to fetch the envbuilder binary from the builder image: %s", err.Error())
 	}
@@ -401,14 +397,14 @@ func (r *CachedImageResource) runCacheProbe(ctx context.Context, data CachedImag
 
 // extractEnvbuilderFromImage reads the image located at imgRef and extracts
 // MagicBinaryLocation to destPath.
-func (r *CachedImageResource) extractEnvbuilderFromImage(ctx context.Context, imgRef, destPath string) error {
+func extractEnvbuilderFromImage(ctx context.Context, imgRef, destPath string) error {
 	needle := filepath.Clean(constants.MagicBinaryLocation)[1:] // skip leading '/'
 	ref, err := name.ParseReference(imgRef)
 	if err != nil {
 		return fmt.Errorf("parse reference: %w", err)
 	}
 
-	img, err := remote.Image(ref, remote.WithAuthFromKeychain(authn.DefaultKeychain), remote.WithTransport(r.client.Transport))
+	img, err := remote.Image(ref, remote.WithAuthFromKeychain(authn.DefaultKeychain))
 	if err != nil {
 		return fmt.Errorf("check remote image: %w", err)
 	}
