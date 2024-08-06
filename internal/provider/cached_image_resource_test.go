@@ -31,6 +31,13 @@ func TestAccCachedImageDataSource(t *testing.T) {
 			PreCheck:                 func() { testAccPreCheck(t) },
 			ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 			Steps: []resource.TestStep{
+				// Plan create only
+				{
+					Config:             deps.Config(t),
+					PlanOnly:           true,
+					ExpectNonEmptyPlan: true, // TODO: check plan
+				},
+				// Create
 				{
 					Config: deps.Config(t),
 					Check: resource.ComposeAggregateTestCheckFunc(
@@ -62,7 +69,14 @@ func TestAccCachedImageDataSource(t *testing.T) {
 							return nil
 						}),
 						resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.0", "FOO=\"bar\""),
+						resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.1", fmt.Sprintf("ENVBUILDER_CACHE_REPO=%q", deps.CacheRepo)),
+						resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.2", fmt.Sprintf("ENVBUILDER_GIT_URL=%q", deps.Repo.URL)),
 					),
+				},
+				// Should produce an empty plan after apply
+				{
+					Config:   deps.Config(t),
+					PlanOnly: true,
 				},
 			},
 		})
@@ -83,6 +97,13 @@ func TestAccCachedImageDataSource(t *testing.T) {
 			PreCheck:                 func() { testAccPreCheck(t) },
 			ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 			Steps: []resource.TestStep{
+				// Should produce a non-empty plan.
+				{
+					Config:             deps.Config(t),
+					PlanOnly:           true,
+					ExpectNonEmptyPlan: true,
+				},
+				// Should detect that no cached image is present.
 				{
 					Config: deps.Config(t),
 					Check: resource.ComposeAggregateTestCheckFunc(

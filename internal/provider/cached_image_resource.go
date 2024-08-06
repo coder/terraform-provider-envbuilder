@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	kconfig "github.com/GoogleContainerTools/kaniko/pkg/config"
 	"github.com/coder/envbuilder"
@@ -245,6 +246,42 @@ func (r *CachedImageResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 
+	data.Image = data.BuilderImage
+	if data.Image.IsUnknown() {
+		return
+	}
+
+	img, err := getRemoteImage(data.Image.ValueString())
+	if err != nil {
+		if !strings.Contains(err.Error(), "NAME_UNKNOWN") {
+			resp.Diagnostics.AddError("Error checking remote image", err.Error())
+			return
+		}
+		// Image does not exist
+		return
+	}
+
+	// Found image!
+	digest, err := img.Digest()
+	if err != nil {
+		resp.Diagnostics.AddError("Error fetching image digest", err.Error())
+		return
+	}
+
+	data.ID = types.StringValue(digest.String())
+	data.Image = types.StringValue(fmt.Sprintf("%s@%s", data.CacheRepo.ValueString(), digest))
+	data.Exists = types.BoolValue(true)
+
+	for key, elem := range data.ExtraEnv.Elements() {
+		data.Env = appendKnownEnvToList(data.Env, key, elem)
+	}
+
+	data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_CACHE_REPO", data.CacheRepo)
+	data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_CACHE_TTL_DAYS", data.CacheTTLDays)
+	data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_GIT_URL", data.GitURL)
+	data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_GIT_USERNAME", data.GitUsername)
+	data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_GIT_PASSWORD", data.GitPassword)
+
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -283,19 +320,45 @@ func (r *CachedImageResource) Create(ctx context.Context, req resource.CreateReq
 	}
 
 	data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_CACHE_REPO", data.CacheRepo)
-	data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_CACHE_TTL_DAYS", data.CacheTTLDays)
 	data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_GIT_URL", data.GitURL)
-	data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_GIT_USERNAME", data.GitUsername)
-	data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_GIT_PASSWORD", data.GitPassword)
+	if !data.CacheTTLDays.IsNull() {
+		data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_CACHE_TTL_DAYS", data.CacheTTLDays)
+	}
+	if !data.GitUsername.IsNull() {
+		data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_GIT_USERNAME", data.GitUsername)
+	}
+	if !data.GitPassword.IsNull() {
+		data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_GIT_PASSWORD", data.GitPassword)
+	}
 
 	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
 func (r *CachedImageResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	// Updates are a no-op.
+	var data CachedImageResourceModel
+
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
+
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
 func (r *CachedImageResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	// Deletes are a no-op.
+	var data CachedImageResourceModel
+
+	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
 // runCacheProbe performs a 'fake build' of the requested image and ensures that
@@ -395,16 +458,26 @@ func (r *CachedImageResource) runCacheProbe(ctx context.Context, data CachedImag
 	return envbuilder.RunCacheProbe(ctx, opts)
 }
 
+// getRemoteImage fetches the image manifest of the image.
+func getRemoteImage(imgRef string) (v1.Image, error) {
+	ref, err := name.ParseReference(imgRef)
+	if err != nil {
+		return nil, fmt.Errorf("parse reference: %w", err)
+	}
+
+	img, err := remote.Image(ref, remote.WithAuthFromKeychain(authn.DefaultKeychain))
+	if err != nil {
+		return nil, fmt.Errorf("check remote image: %w", err)
+	}
+
+	return img, nil
+}
+
 // extractEnvbuilderFromImage reads the image located at imgRef and extracts
 // MagicBinaryLocation to destPath.
 func extractEnvbuilderFromImage(ctx context.Context, imgRef, destPath string) error {
 	needle := filepath.Clean(constants.MagicBinaryLocation)[1:] // skip leading '/'
-	ref, err := name.ParseReference(imgRef)
-	if err != nil {
-		return fmt.Errorf("parse reference: %w", err)
-	}
-
-	img, err := remote.Image(ref, remote.WithAuthFromKeychain(authn.DefaultKeychain))
+	img, err := getRemoteImage(imgRef)
 	if err != nil {
 		return fmt.Errorf("check remote image: %w", err)
 	}
