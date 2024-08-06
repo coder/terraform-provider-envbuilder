@@ -43,7 +43,7 @@ type CachedImageResource struct {
 	client *http.Client
 }
 
-// CachedImageResourceModel describes the data source data model.
+// CachedImageResourceModel describes an envbuilder cached image resource.
 type CachedImageResourceModel struct {
 	// Required "inputs".
 	BuilderImage types.String `tfsdk:"builder_image"`
@@ -85,7 +85,7 @@ func (r *CachedImageResource) Metadata(ctx context.Context, req resource.Metadat
 func (r *CachedImageResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		// This description is used by the documentation generator and the language server.
-		MarkdownDescription: "The cached image data source can be used to retrieve a cached image produced by envbuilder. Reading from this data source will clone the specified Git repository, read a Devcontainer specification or Dockerfile, and check for its presence in the provided cache repo.",
+		MarkdownDescription: "The cached image resource can be used to retrieve a cached image produced by envbuilder. Creating this resource will clone the specified Git repository, read a Devcontainer specification or Dockerfile, and check for its presence in the provided cache repo. If any of the layers of the cached image are missing in the provided cache repo, the image will be considered as missing. A cached image in this state will be recreated until found.",
 
 		Attributes: map[string]schema.Attribute{
 			// Required "inputs".
@@ -240,19 +240,21 @@ func (r *CachedImageResource) Configure(ctx context.Context, req resource.Config
 func (r *CachedImageResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var data CachedImageResourceModel
 
-	// Read Terraform configuration data into the model
+	// Read prior state into the model
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	// If the computed attribute 'image' has not been set, then there is nothing
-	// to read!
-	if data.Image.IsUnknown() {
+	// If the previous state is that Image == BuilderImage, then we previously did
+	// not find the image. We will need to run another cache probe.
+	if data.Image.Equal(data.BuilderImage) {
+		data.ID = types.StringValue(uuid.Nil.String())
+		resp.State.RemoveResource(ctx)
 		return
 	}
 
-	// Attempt to fetch the image manifest.
+	// Check the remote registry for the image we previously found.
 	img, err := getRemoteImage(data.Image.ValueString())
 	if err != nil {
 		if !strings.Contains(err.Error(), "MANIFEST_UNKNOWN") {
@@ -260,7 +262,9 @@ func (r *CachedImageResource) Read(ctx context.Context, req resource.ReadRequest
 			return
 		}
 		tflog.Debug(ctx, "Remote image does not exist", map[string]any{"ref": data.Image.ValueString()})
-		// Image does not exist
+		// Image does not exist any longer! Remove the resource so we can re-create
+		// it next time.
+		resp.State.RemoveResource(ctx)
 		return
 	}
 
@@ -312,7 +316,7 @@ func (r *CachedImageResource) Create(ctx context.Context, req resource.CreateReq
 		// FIXME: there are legit errors that can crop up here.
 		// We should add a sentinel error in Kaniko for uncached layers, and check
 		// it here.
-		resp.Diagnostics.AddWarning("Cached Image Not Found", fmt.Sprintf("Unable to check for cached image: %s", err.Error()))
+		tflog.Info(ctx, "cached image not found", map[string]any{"err": err.Error()})
 		data.Image = data.BuilderImage
 	} else if digest, err := cachedImg.Digest(); err != nil {
 		// There's something seriously up with this image!

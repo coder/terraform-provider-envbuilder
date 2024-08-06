@@ -208,3 +208,14 @@ func ensureImage(ctx context.Context, t testing.TB, cli *client.Client, ref stri
 	_, err = io.ReadAll(resp)
 	require.NoError(t, err)
 }
+
+// quotedPrefix is a helper for asserting quoted strings.
+func quotedPrefix(prefix string) func(string) error {
+	return func(val string) error {
+		trimmed := strings.Trim(val, `"`)
+		if !strings.HasPrefix(trimmed, prefix) {
+			return fmt.Errorf("expected value %q to have prefix %q", trimmed, prefix)
+		}
+		return nil
+	}
+}
