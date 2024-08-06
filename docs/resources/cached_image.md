@@ -3,12 +3,12 @@
 page_title: "envbuilder_cached_image Resource - envbuilder"
 subcategory: ""
 description: |-
-  The cached image data source can be used to retrieve a cached image produced by envbuilder. Reading from this data source will clone the specified Git repository, read a Devcontainer specification or Dockerfile, and check for its presence in the provided cache repo.
+  The cached image resource can be used to retrieve a cached image produced by envbuilder. Creating this resource will clone the specified Git repository, read a Devcontainer specification or Dockerfile, and check for its presence in the provided cache repo. If any of the layers of the cached image are missing in the provided cache repo, the image will be considered as missing. A cached image in this state will be recreated until found.
 ---
 
 # envbuilder_cached_image (Resource)
 
-The cached image data source can be used to retrieve a cached image produced by envbuilder. Reading from this data source will clone the specified Git repository, read a Devcontainer specification or Dockerfile, and check for its presence in the provided cache repo.
+The cached image resource can be used to retrieve a cached image produced by envbuilder. Creating this resource will clone the specified Git repository, read a Devcontainer specification or Dockerfile, and check for its presence in the provided cache repo. If any of the layers of the cached image are missing in the provided cache repo, the image will be considered as missing. A cached image in this state will be recreated until found.
 
 
 
