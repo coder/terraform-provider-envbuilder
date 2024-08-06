@@ -196,9 +196,10 @@ func (r *CachedImageResource) Schema(ctx context.Context, req resource.SchemaReq
 			// Computed "outputs".
 			// TODO(mafredri): Map vs List? Support both?
 			"env": schema.ListAttribute{
-				MarkdownDescription: "Computed envbuilder configuration to be set for the container.",
+				MarkdownDescription: "Computed envbuilder configuration to be set for the container. May contain secrets.",
 				ElementType:         types.StringType,
 				Computed:            true,
+				Sensitive:           true,
 			},
 			"exists": schema.BoolAttribute{
 				MarkdownDescription: "Whether the cached image was exists or not for the given config.",

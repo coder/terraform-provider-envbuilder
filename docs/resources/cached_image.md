@@ -47,7 +47,7 @@ The cached image data source can be used to retrieve a cached image produced by 
 
 ### Read-Only
 
-- `env` (List of String) Computed envbuilder configuration to be set for the container.
+- `env` (List of String, Sensitive) Computed envbuilder configuration to be set for the container. May contain secrets.
 - `exists` (Boolean) Whether the cached image was exists or not for the given config.
 - `id` (String) Cached image identifier. This will generally be the image's SHA256 digest.
 - `image` (String) Outputs the cached image repo@digest if it exists, and builder image otherwise.
