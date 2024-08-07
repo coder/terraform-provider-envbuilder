@@ -27,6 +27,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/mapplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
@@ -38,7 +41,7 @@ func NewCachedImageResource() resource.Resource {
 	return &CachedImageResource{}
 }
 
-// CachedImageResource defines the data source implementation.
+// CachedImageResource defines the resource implementation.
 type CachedImageResource struct {
 	client *http.Client
 }
@@ -92,14 +95,23 @@ func (r *CachedImageResource) Schema(ctx context.Context, req resource.SchemaReq
 			"builder_image": schema.StringAttribute{
 				MarkdownDescription: "The envbuilder image to use if the cached version is not found.",
 				Required:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
 			},
 			"cache_repo": schema.StringAttribute{
 				MarkdownDescription: "(Envbuilder option) The name of the container registry to fetch the cache image from.",
 				Required:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
 			},
 			"git_url": schema.StringAttribute{
 				MarkdownDescription: "(Envbuilder option) The URL of a Git repository containing a Devcontainer or Docker image to clone.",
 				Required:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
 			},
 			// Optional "inputs".
 			"base_image_cache_dir": schema.StringAttribute{
@@ -117,14 +129,23 @@ func (r *CachedImageResource) Schema(ctx context.Context, req resource.SchemaReq
 			"devcontainer_dir": schema.StringAttribute{
 				MarkdownDescription: "(Envbuilder option) The path to the folder containing the devcontainer.json file that will be used to build the workspace and can either be an absolute path or a path relative to the workspace folder. If not provided, defaults to `.devcontainer`.",
 				Optional:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
 			},
 			"devcontainer_json_path": schema.StringAttribute{
 				MarkdownDescription: "(Envbuilder option) The path to a devcontainer.json file that is either an absolute path or a path relative to DevcontainerDir. This can be used in cases where one wants to substitute an edited devcontainer.json file for the one that exists in the repo.",
 				Optional:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
 			},
 			"dockerfile_path": schema.StringAttribute{
 				MarkdownDescription: "(Envbuilder option) The relative path to the Dockerfile that will be used to build the workspace. This is an alternative to using a devcontainer that some might find simpler.",
 				Optional:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
 			},
 			"docker_config_base64": schema.StringAttribute{
 				MarkdownDescription: "(Envbuilder option) The base64 encoded Docker config file that will be used to pull images from private container registries.",
@@ -139,6 +160,9 @@ func (r *CachedImageResource) Schema(ctx context.Context, req resource.SchemaReq
 				MarkdownDescription: "Extra environment variables to set for the container. This may include envbuilder options.",
 				ElementType:         types.StringType,
 				Optional:            true,
+				PlanModifiers: []planmodifier.Map{
+					mapplanmodifier.RequiresReplace(),
+				},
 			},
 			"fallback_image": schema.StringAttribute{
 				MarkdownDescription: "(Envbuilder option) Specifies an alternative image to use when neither an image is declared in the devcontainer.json file nor a Dockerfile is present. If there's a build failure (from a faulty Dockerfile) or a misconfiguration, this image will be the substitute. Set ExitOnBuildFailure to true to halt the container if the build faces an issue.",
@@ -227,7 +251,7 @@ func (r *CachedImageResource) Configure(ctx context.Context, req resource.Config
 
 	if !ok {
 		resp.Diagnostics.AddError(
-			"Unexpected Data Source Configure Type",
+			"Unexpected Resource Configure Type",
 			fmt.Sprintf("Expected *http.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
 
@@ -416,8 +440,6 @@ func (r *CachedImageResource) runCacheProbe(ctx context.Context, data CachedImag
 		tflog.Debug(ctx, "workspace_folder not specified, using temp dir", map[string]any{"workspace_folder": workspaceFolder})
 	}
 
-	// TODO: check if this is a "plan" or "apply", and only run envbuilder on "apply".
-	// This may require changing this to be a resource instead of a data source.
 	opts := eboptions.Options{
 		// These options are always required
 		CacheRepo:       data.CacheRepo.ValueString(),
