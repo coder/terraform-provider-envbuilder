@@ -249,7 +249,6 @@ func (r *CachedImageResource) Read(ctx context.Context, req resource.ReadRequest
 	// If the previous state is that Image == BuilderImage, then we previously did
 	// not find the image. We will need to run another cache probe.
 	if data.Image.Equal(data.BuilderImage) {
-		data.ID = types.StringValue(uuid.Nil.String())
 		resp.State.RemoveResource(ctx)
 		return
 	}
