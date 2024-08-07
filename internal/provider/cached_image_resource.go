@@ -70,6 +70,7 @@ type CachedImageResourceModel struct {
 	GitUsername          types.String `tfsdk:"git_username"`
 	IgnorePaths          types.List   `tfsdk:"ignore_paths"`
 	Insecure             types.Bool   `tfsdk:"insecure"`
+	RemoteRepoBuildMode  types.Bool   `tfsdk:"remote_repo_build_mode"`
 	SSLCertBase64        types.String `tfsdk:"ssl_cert_base64"`
 	Verbose              types.Bool   `tfsdk:"verbose"`
 	WorkspaceFolder      types.String `tfsdk:"workspace_folder"`
@@ -202,6 +203,13 @@ func (r *CachedImageResource) Schema(ctx context.Context, req resource.SchemaReq
 			"insecure": schema.BoolAttribute{
 				MarkdownDescription: "(Envbuilder option) Bypass TLS verification when cloning and pulling from container registries.",
 				Optional:            true,
+			},
+			"remote_repo_build_mode": schema.BoolAttribute{
+				MarkdownDescription: "(Envbuilder option) RemoteRepoBuildMode uses the remote repository as the source of truth when building the image. Enabling this option ignores user changes to local files and they will not be reflected in the image. This can be used to improve cache utilization when multiple users are working on the same repository.",
+				Optional:            true,
+				PlanModifiers: []planmodifier.Bool{
+					boolplanmodifier.RequiresReplace(),
+				},
 			},
 			"ssl_cert_base64": schema.StringAttribute{
 				MarkdownDescription: "(Envbuilder option) The content of an SSL cert file. This is useful for self-signed certificates.",
@@ -479,6 +487,7 @@ func (r *CachedImageResource) runCacheProbe(ctx context.Context, data CachedImag
 		GitPassword:          data.GitPassword.ValueString(),
 		GitSSHPrivateKeyPath: data.GitSSHPrivateKeyPath.ValueString(),
 		GitHTTPProxyURL:      data.GitHTTPProxyURL.ValueString(),
+		RemoteRepoBuildMode:  data.RemoteRepoBuildMode.ValueBool(),
 		SSLCertBase64:        data.SSLCertBase64.ValueString(),
 
 		// Other options

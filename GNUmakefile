@@ -36,7 +36,7 @@ test-registry: test-registry-container test-images-pull test-images-push
 test-registry-container: .registry-cache
 	if ! curl -fsSL http://localhost:5000/v2/_catalog > /dev/null 2>&1; then \
 		docker rm -f tfprov-envbuilder-registry && \
-		docker run -d -p 5000:5000 --name envbuilder-registry --volume $(PWD)/.registry-cache:/var/lib/registry registry:2; \
+		docker run -d -p 5000:5000 --name tfprov-envbuilder-registry --volume $(PWD)/.registry-cache:/var/lib/registry registry:2; \
 	fi
 
 # Pulls images referenced in integration tests and pushes them to the local cache.

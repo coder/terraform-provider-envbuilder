@@ -35,10 +35,11 @@ var testAccProtoV6ProviderFactories = map[string]func() (tfprotov6.ProviderServe
 
 // testDependencies contain information about stuff the test depends on.
 type testDependencies struct {
-	BuilderImage string
-	CacheRepo    string
-	ExtraEnv     map[string]string
-	Repo         testGitRepoSSH
+	BuilderImage        string
+	CacheRepo           string
+	ExtraEnv            map[string]string
+	Repo                testGitRepoSSH
+	RemoteRepoBuildMode bool
 }
 
 // Config generates a valid Terraform config file from the dependencies.
@@ -56,6 +57,7 @@ resource "envbuilder_cached_image" "test" {
 	}
 	git_url                  = {{ quote .Repo.URL }}
 	git_ssh_private_key_path = {{ quote .Repo.Key }}
+	remote_repo_build_mode   = {{ .RemoteRepoBuildMode }}
 	verbose                  = true
 	workspace_folder         = {{ quote .Repo.Dir }}
 }`
@@ -88,10 +90,11 @@ func setup(ctx context.Context, t testing.TB, files map[string]string) testDepen
 	gitRepo := serveGitRepoSSH(ctx, t, repoDir)
 
 	return testDependencies{
-		BuilderImage: envbuilderImageRef,
-		CacheRepo:    reg + "/test",
-		ExtraEnv:     make(map[string]string),
-		Repo:         gitRepo,
+		BuilderImage:        envbuilderImageRef,
+		CacheRepo:           reg + "/test",
+		ExtraEnv:            make(map[string]string),
+		Repo:                gitRepo,
+		RemoteRepoBuildMode: true,
 	}
 }
 
