@@ -27,6 +27,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/mapplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -224,18 +226,30 @@ func (r *CachedImageResource) Schema(ctx context.Context, req resource.SchemaReq
 				ElementType:         types.StringType,
 				Computed:            true,
 				Sensitive:           true,
+				PlanModifiers: []planmodifier.List{
+					listplanmodifier.RequiresReplace(),
+				},
 			},
 			"exists": schema.BoolAttribute{
 				MarkdownDescription: "Whether the cached image was exists or not for the given config.",
 				Computed:            true,
+				PlanModifiers: []planmodifier.Bool{
+					boolplanmodifier.RequiresReplace(),
+				},
 			},
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Cached image identifier. This will generally be the image's SHA256 digest.",
 				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
 			},
 			"image": schema.StringAttribute{
 				MarkdownDescription: "Outputs the cached image repo@digest if it exists, and builder image otherwise.",
 				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
 			},
 		},
 	}
@@ -273,6 +287,7 @@ func (r *CachedImageResource) Read(ctx context.Context, req resource.ReadRequest
 	// If the previous state is that Image == BuilderImage, then we previously did
 	// not find the image. We will need to run another cache probe.
 	if data.Image.Equal(data.BuilderImage) {
+		tflog.Debug(ctx, "Image previously not found. Recreating.", map[string]any{"ref": data.Image.ValueString()})
 		resp.State.RemoveResource(ctx)
 		return
 	}
@@ -284,9 +299,9 @@ func (r *CachedImageResource) Read(ctx context.Context, req resource.ReadRequest
 			resp.Diagnostics.AddError("Error checking remote image", err.Error())
 			return
 		}
-		tflog.Debug(ctx, "Remote image does not exist", map[string]any{"ref": data.Image.ValueString()})
 		// Image does not exist any longer! Remove the resource so we can re-create
 		// it next time.
+		tflog.Debug(ctx, "Remote image does not exist any longer. Recreating.", map[string]any{"ref": data.Image.ValueString()})
 		resp.State.RemoveResource(ctx)
 		return
 	}
