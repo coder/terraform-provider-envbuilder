@@ -6,11 +6,13 @@ package provider
 import (
 	"bufio"
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"slices"
 	"strings"
 	"testing"
+	"text/template"
 
 	"github.com/coder/terraform-provider-envbuilder/testutil/registrytest"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
@@ -34,16 +36,43 @@ var testAccProtoV6ProviderFactories = map[string]func() (tfprotov6.ProviderServe
 	"envbuilder": providerserver.NewProtocol6WithError(New("test")()),
 }
 
-func testAccPreCheck(t *testing.T) {
-	// You can add code here to run prior to any test case execution, for example assertions
-	// about the appropriate environment variables being set are common to see in a pre-check
-	// function.
-}
-
+// testDependencies contain information about stuff the test depends on.
 type testDependencies struct {
 	BuilderImage string
 	CacheRepo    string
+	ExtraEnv     map[string]string
 	Repo         testGitRepoSSH
+}
+
+// Config generates a valid Terraform config file from the dependencies.
+func (d *testDependencies) Config(t testing.TB) string {
+	t.Helper()
+
+	tpl := `provider envbuilder {}
+resource "envbuilder_cached_image" "test" {
+  builder_image            = {{ quote .BuilderImage }}
+	cache_repo               = {{ quote .CacheRepo }}
+	extra_env                = {
+	{{ range $k, $v := .ExtraEnv }}
+		{{ quote $k }}: {{ quote $v }}
+	{{ end }}
+	}
+	git_url                  = {{ quote .Repo.URL }}
+	git_ssh_private_key_path = {{ quote .Repo.Key }}
+	verbose                  = true
+	workspace_folder         = {{ quote .Repo.Dir }}
+}`
+
+	fm := template.FuncMap{"quote": quote}
+	var sb strings.Builder
+	tmpl, err := template.New("envbuilder_cached_image").Funcs(fm).Parse(tpl)
+	require.NoError(t, err)
+	require.NoError(t, tmpl.Execute(&sb, d))
+	return sb.String()
+}
+
+func quote(s string) string {
+	return fmt.Sprintf("%q", s)
 }
 
 func setup(ctx context.Context, t testing.TB, files map[string]string) testDependencies {
@@ -64,6 +93,7 @@ func setup(ctx context.Context, t testing.TB, files map[string]string) testDepen
 	return testDependencies{
 		BuilderImage: envbuilderImageRef,
 		CacheRepo:    reg + "/test",
+		ExtraEnv:     make(map[string]string),
 		Repo:         gitRepo,
 	}
 }
@@ -166,4 +196,15 @@ func ensureImage(ctx context.Context, t testing.TB, cli *client.Client, ref stri
 	require.NoError(t, err)
 	_, err = io.ReadAll(resp)
 	require.NoError(t, err)
+}
+
+// quotedPrefix is a helper for asserting quoted strings.
+func quotedPrefix(prefix string) func(string) error {
+	return func(val string) error {
+		trimmed := strings.Trim(val, `"`)
+		if !strings.HasPrefix(trimmed, prefix) {
+			return fmt.Errorf("expected value %q to have prefix %q", trimmed, prefix)
+		}
+		return nil
+	}
 }
