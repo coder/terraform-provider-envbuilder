@@ -52,33 +52,22 @@ func (d *testDependencies) Config(t testing.TB) string {
 resource "envbuilder_cached_image" "test" {
   builder_image            = {{ quote .BuilderImage }}
 	cache_repo               = {{ quote .CacheRepo }}
-	extra_env                = {{ tfMap .ExtraEnv }}
+	extra_env                = {
+	{{ range $k, $v := .ExtraEnv }}
+		{{ quote $k }}: {{ quote $v }}
+	{{ end }}
+	}
 	git_url                  = {{ quote .Repo.URL }}
 	git_ssh_private_key_path = {{ quote .Repo.Key }}
 	verbose                  = true
 	workspace_folder         = {{ quote .Repo.Dir }}
 }`
 
-	fm := template.FuncMap{"tfMap": tfMap, "quote": quote}
+	fm := template.FuncMap{"quote": quote}
 	var sb strings.Builder
 	tmpl, err := template.New("envbuilder_cached_image").Funcs(fm).Parse(tpl)
 	require.NoError(t, err)
 	require.NoError(t, tmpl.Execute(&sb, d))
-	return sb.String()
-}
-
-func tfMap(m map[string]string) string {
-	var sb strings.Builder
-	_, _ = sb.WriteRune('{')
-	_, _ = sb.WriteRune('\n')
-	for k, v := range m {
-		_, _ = sb.WriteString(fmt.Sprintf("%q", k))
-		_, _ = sb.WriteRune(':')
-		_, _ = sb.WriteRune(' ')
-		_, _ = sb.WriteString(fmt.Sprintf("%q", v))
-		_, _ = sb.WriteRune('\n')
-	}
-	_, _ = sb.WriteRune('}')
 	return sb.String()
 }
 
