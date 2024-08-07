@@ -381,7 +381,7 @@ func (r *CachedImageResource) Delete(ctx context.Context, req resource.DeleteReq
 func (r *CachedImageResource) runCacheProbe(ctx context.Context, data CachedImageResourceModel) (v1.Image, error) {
 	tmpDir, err := os.MkdirTemp(os.TempDir(), "envbuilder-provider-cached-image-data-source")
 	if err != nil {
-		return nil, fmt.Errorf("Unable to create temp directory: %s", err.Error())
+		return nil, fmt.Errorf("unable to create temp directory: %s", err.Error())
 	}
 	defer func() {
 		if err := os.RemoveAll(tmpDir); err != nil {
@@ -408,7 +408,7 @@ func (r *CachedImageResource) runCacheProbe(ctx context.Context, data CachedImag
 	envbuilderPath := filepath.Join(tmpDir, "envbuilder")
 	if err := extractEnvbuilderFromImage(ctx, data.BuilderImage.ValueString(), envbuilderPath); err != nil {
 		tflog.Error(ctx, "failed to fetch envbuilder binary from builder image", map[string]any{"err": err})
-		return nil, fmt.Errorf("Failed to fetch the envbuilder binary from the builder image: %s", err.Error())
+		return nil, fmt.Errorf("failed to fetch the envbuilder binary from the builder image: %s", err.Error())
 	}
 
 	workspaceFolder := data.WorkspaceFolder.ValueString()
