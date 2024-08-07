@@ -1,6 +1,3 @@
-// Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
-
 package main
 
 import (
@@ -20,7 +17,7 @@ import (
 
 // Run the docs generation tool, check its repository for more information on how it works and how docs
 // can be customized.
-//go:generate go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs generate -provider-name envbuilder
+//go:generate go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs generate
 
 // these will be set by the goreleaser configuration
 // to appropriate values for the compiled binary.

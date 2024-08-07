@@ -3,19 +3,20 @@ module github.com/coder/terraform-provider-envbuilder
 go 1.22.4
 
 // We use our own Kaniko fork.
-replace github.com/GoogleContainerTools/kaniko => github.com/coder/kaniko v0.0.0-20240803153527-10d1800455b9
+replace github.com/GoogleContainerTools/kaniko => github.com/coder/kaniko v0.0.0-20240807142221-ffc5e60fca41
 
 // Required to import codersdk due to gvisor dependency.
 replace tailscale.com => github.com/coder/tailscale v1.1.1-0.20240702054557-aa558fbe5374
 
 require (
 	github.com/GoogleContainerTools/kaniko v1.9.2
-	github.com/coder/envbuilder v1.0.0-rc.0.0.20240805094524-c1f9917dfb61
+	github.com/coder/envbuilder v1.0.0-rc.0.0.20240807151028-6e5bfa5faa29
 	github.com/docker/docker v26.1.4+incompatible
 	github.com/gliderlabs/ssh v0.3.7
 	github.com/go-git/go-billy/v5 v5.5.0
 	github.com/go-git/go-git/v5 v5.12.0
 	github.com/google/go-containerregistry v0.20.1
+	github.com/google/uuid v1.6.0
 	github.com/hashicorp/terraform-plugin-docs v0.19.4
 	github.com/hashicorp/terraform-plugin-framework v1.10.0
 	github.com/hashicorp/terraform-plugin-go v0.23.0
@@ -144,7 +145,6 @@ require (
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/nftables v0.2.0 // indirect
 	github.com/google/pprof v0.0.0-20230817174616-7a8ec2ada47b // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/handlers v1.5.1 // indirect
 	github.com/gorilla/mux v1.8.1 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.18.0 // indirect
