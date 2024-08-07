@@ -6,10 +6,10 @@ name: Tests
 on:
   pull_request:
     paths-ignore:
-      - 'README.md'
+      - "README.md"
   push:
     paths-ignore:
-      - 'README.md'
+      - "README.md"
 
 # Testing only needs permissions to read the repository contents.
 permissions:
@@ -25,7 +25,7 @@ jobs:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
       - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # v5.0.1
         with:
-          go-version-file: 'go.mod'
+          go-version-file: "go.mod"
           cache: true
       - run: go mod download
       - run: go build -v .
@@ -40,13 +40,13 @@ jobs:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
       - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # v5.0.1
         with:
-          go-version-file: 'go.mod'
+          go-version-file: "go.mod"
           cache: true
       # Temporarily download Terraform 1.8 prerelease for function documentation support.
       # When Terraform 1.8.0 final is released, this can be removed.
       - uses: hashicorp/setup-terraform@651471c36a6092792c552e8b1bef71e592b462d8 # v3.1.1
         with:
-          terraform_version: '1.8.0-alpha20240216'
+          terraform_version: "1.8.0-alpha20240216"
           terraform_wrapper: false
       - run: go generate ./...
       - name: git diff
@@ -65,17 +65,16 @@ jobs:
       matrix:
         # list whatever Terraform versions here you would like to support
         terraform:
-          # TODO: test with more terraform versions. For now, testing with latest.
-          # - "1.5.*"
-          # - "1.6.*"
-          # - "1.7.*"
-          # - "1.8.*"
+          - "1.5.*"
+          - "1.6.*"
+          - "1.7.*"
+          - "1.8.*"
           - "1.9.*"
     steps:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
       - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # v5.0.1
         with:
-          go-version-file: 'go.mod'
+          go-version-file: "go.mod"
           cache: true
       - uses: hashicorp/setup-terraform@651471c36a6092792c552e8b1bef71e592b462d8 # v3.1.1
         with:
