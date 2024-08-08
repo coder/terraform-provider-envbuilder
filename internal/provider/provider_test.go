@@ -59,7 +59,6 @@ resource "envbuilder_cached_image" "test" {
 	git_ssh_private_key_path = {{ quote .Repo.Key }}
 	remote_repo_build_mode   = {{ .RemoteRepoBuildMode }}
 	verbose                  = true
-	workspace_folder         = {{ quote .Repo.Dir }}
 }`
 
 	fm := template.FuncMap{"quote": quote}
@@ -134,10 +133,12 @@ func seedCache(ctx context.Context, t testing.TB, deps testDependencies) {
 
 	require.NoError(t, err, "failed to run envbuilder to seed cache")
 	t.Cleanup(func() {
-		_ = cli.ContainerRemove(ctx, ctr.ID, container.RemoveOptions{
+		if err := cli.ContainerRemove(context.Background(), ctr.ID, container.RemoveOptions{
 			RemoveVolumes: true,
 			Force:         true,
-		})
+		}); err != nil {
+			t.Errorf("removing container: %s", err.Error())
+		}
 	})
 	err = cli.ContainerStart(ctx, ctr.ID, container.StartOptions{})
 	require.NoError(t, err)
