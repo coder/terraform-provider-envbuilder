@@ -595,14 +595,16 @@ func extractEnvbuilderFromImage(ctx context.Context, imgRef, destPath string) er
 // Check IsUnknown() first before calling String().
 type stringable interface {
 	IsUnknown() bool
+	IsNull() bool
 	String() string
 }
 
 func appendKnownEnvToList(list types.List, key string, value stringable) types.List {
-	if value.IsUnknown() {
+	if value.IsUnknown() || value.IsNull() {
 		return list
 	}
-	elem := types.StringValue(fmt.Sprintf("%s=%s", key, value.String()))
+	val := strings.Trim(value.String(), `"`)
+	elem := types.StringValue(fmt.Sprintf("%s=%s", key, val))
 	list, _ = types.ListValue(types.StringType, append(list.Elements(), elem))
 	return list
 }
