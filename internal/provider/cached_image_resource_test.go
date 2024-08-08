@@ -92,9 +92,9 @@ func TestAccCachedImageDataSource(t *testing.T) {
 					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "exists", "true"),
 					resource.TestCheckResourceAttrSet("envbuilder_cached_image.test", "image"),
 					resource.TestCheckResourceAttrWith("envbuilder_cached_image.test", "image", quotedPrefix(deps.CacheRepo)),
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.0", "FOO=\"bar\""),
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.1", fmt.Sprintf("ENVBUILDER_CACHE_REPO=%q", deps.CacheRepo)),
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.2", fmt.Sprintf("ENVBUILDER_GIT_URL=%q", deps.Repo.URL)),
+					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.0", "FOO=bar"),
+					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.1", fmt.Sprintf("ENVBUILDER_CACHE_REPO=%s", deps.CacheRepo)),
+					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.2", fmt.Sprintf("ENVBUILDER_GIT_URL=%s", deps.Repo.URL)),
 				),
 			},
 			// Should produce an empty plan after apply
