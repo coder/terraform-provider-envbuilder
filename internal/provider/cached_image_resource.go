@@ -205,7 +205,7 @@ func (r *CachedImageResource) Schema(ctx context.Context, req resource.SchemaReq
 				Optional:            true,
 			},
 			"remote_repo_build_mode": schema.BoolAttribute{
-				MarkdownDescription: "(Envbuilder option) RemoteRepoBuildMode uses the remote repository as the source of truth when building the image. Enabling this option ignores user changes to local files and they will not be reflected in the image. This can be used to improve cache utilization when multiple users are working on the same repository.",
+				MarkdownDescription: "(Envbuilder option) RemoteRepoBuildMode uses the remote repository as the source of truth when building the image. Enabling this option ignores user changes to local files and they will not be reflected in the image. This can be used to improve cache utilization when multiple users are working on the same repository. (NOTE: The Terraform provider will **always** use remote repo build mode for probing the cache repo.)",
 				Optional:            true,
 				PlanModifiers: []planmodifier.Bool{
 					boolplanmodifier.RequiresReplace(),
@@ -338,6 +338,9 @@ func (r *CachedImageResource) Read(ctx context.Context, req resource.ReadRequest
 	if !data.GitPassword.IsNull() {
 		data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_GIT_PASSWORD", data.GitPassword)
 	}
+	if !data.RemoteRepoBuildMode.IsNull() {
+		data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_REMOTE_REPO_BUILD_MODE", data.GitPassword)
+	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -386,6 +389,9 @@ func (r *CachedImageResource) Create(ctx context.Context, req resource.CreateReq
 	}
 	if !data.GitPassword.IsNull() {
 		data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_GIT_PASSWORD", data.GitPassword)
+	}
+	if !data.RemoteRepoBuildMode.IsNull() {
+		data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_REMOTE_REPO_BUILD_MODE", data.GitPassword)
 	}
 
 	// Save data into Terraform state
@@ -487,7 +493,7 @@ func (r *CachedImageResource) runCacheProbe(ctx context.Context, data CachedImag
 		GitPassword:          data.GitPassword.ValueString(),
 		GitSSHPrivateKeyPath: data.GitSSHPrivateKeyPath.ValueString(),
 		GitHTTPProxyURL:      data.GitHTTPProxyURL.ValueString(),
-		RemoteRepoBuildMode:  data.RemoteRepoBuildMode.ValueBool(),
+		RemoteRepoBuildMode:  true, // Cache probes are always done based on the remote state.
 		SSLCertBase64:        data.SSLCertBase64.ValueString(),
 
 		// Other options
