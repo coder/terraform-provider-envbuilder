@@ -125,21 +125,24 @@ func startSSHServer(ctx context.Context, t testing.TB) string {
 				t.Logf("command failed: %s", err)
 				return
 			}
-			t.Cleanup(func() {
-				_ = in.Close()
-				_ = out.Close()
-				_ = cmd.Process.Kill()
-			})
 
 			go func() {
 				_, _ = io.Copy(in, s)
 				_ = in.Close()
 			}()
+			outDone := make(chan struct{})
 			go func() {
+				defer close(outDone)
 				_, _ = io.Copy(s, out)
 				_ = out.Close()
 				_ = s.CloseWrite()
 			}()
+			t.Cleanup(func() {
+				_ = in.Close()
+				_ = out.Close()
+				<-outDone
+				_ = cmd.Process.Kill()
+			})
 			err = cmd.Wait()
 			if err != nil {
 				t.Logf("command failed: %s", err)
