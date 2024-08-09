@@ -2,8 +2,8 @@
 
 The `terraform-provider-envbuilder` is a Terraform provider that acts as a helper for setting up [`envbuilder`](https://envbuilder.sh) environments.
 
-It is used to determine if a pre-built image of a Devcontainer built from a given Git repository is present in a given Docker registry.
-If all layers that would result from building a particular devcontainer are present in the remote registry, then that image can simply be used as the starting point instead.
+It is used to determine if a pre-built image of a dev container built from a given Git repository is present in a given Docker registry.
+If it is found that building a particular dev container would produce the same image that is already present in the remote registry, then that image can be used to start the container instead, skipping over the build phase.
 
 ## Usage
 
