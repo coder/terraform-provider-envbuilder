@@ -41,6 +41,7 @@ The cached image resource can be used to retrieve a cached image produced by env
 - `git_username` (String) (Envbuilder option) The username to use for Git authentication. This is optional.
 - `ignore_paths` (List of String) (Envbuilder option) The comma separated list of paths to ignore when building the workspace.
 - `insecure` (Boolean) (Envbuilder option) Bypass TLS verification when cloning and pulling from container registries.
+- `remote_repo_build_mode` (Boolean) (Envbuilder option) RemoteRepoBuildMode uses the remote repository as the source of truth when building the image. Enabling this option ignores user changes to local files and they will not be reflected in the image. This can be used to improve cache utilization when multiple users are working on the same repository. (NOTE: The Terraform provider will **always** use remote repo build mode for probing the cache repo.)
 - `ssl_cert_base64` (String) (Envbuilder option) The content of an SSL cert file. This is useful for self-signed certificates.
 - `verbose` (Boolean) (Envbuilder option) Enable verbose output.
 - `workspace_folder` (String) (Envbuilder option) path to the workspace folder that will be built. This is optional.
