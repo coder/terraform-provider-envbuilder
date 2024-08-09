@@ -149,7 +149,9 @@ func startSSHServer(ctx context.Context, t testing.TB) string {
 
 			err = s.Exit(cmd.ProcessState.ExitCode())
 			if err != nil {
-				t.Logf("session exit failed: %s", err)
+				if !errors.Is(err, io.EOF) {
+					t.Errorf("session exit failed: %s", err)
+				}
 			}
 		},
 	}
