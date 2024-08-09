@@ -31,7 +31,6 @@ jobs:
         with:
           version: latest
           args: release --clean
-          goos: ["linux"]
         env:
           GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
           # GitHub sets this automatically
