@@ -338,9 +338,11 @@ func (r *CachedImageResource) Read(ctx context.Context, req resource.ReadRequest
 	if !data.GitPassword.IsNull() {
 		data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_GIT_PASSWORD", data.GitPassword)
 	}
-	if !data.RemoteRepoBuildMode.IsNull() {
-		// Default to remote build mode.
+	// Default to remote build mode.
+	if data.RemoteRepoBuildMode.IsNull() {
 		data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_REMOTE_REPO_BUILD_MODE", types.BoolValue(true))
+	} else {
+		data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_REMOTE_REPO_BUILD_MODE", data.RemoteRepoBuildMode)
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -391,9 +393,11 @@ func (r *CachedImageResource) Create(ctx context.Context, req resource.CreateReq
 	if !data.GitPassword.IsNull() {
 		data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_GIT_PASSWORD", data.GitPassword)
 	}
-	if !data.RemoteRepoBuildMode.IsNull() {
-		// Default to remote build mode.
+	// Default to remote build mode.
+	if data.RemoteRepoBuildMode.IsNull() {
 		data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_REMOTE_REPO_BUILD_MODE", types.BoolValue(true))
+	} else {
+		data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_REMOTE_REPO_BUILD_MODE", data.RemoteRepoBuildMode)
 	}
 
 	// Save data into Terraform state
@@ -495,7 +499,7 @@ func (r *CachedImageResource) runCacheProbe(ctx context.Context, data CachedImag
 		GitPassword:          data.GitPassword.ValueString(),
 		GitSSHPrivateKeyPath: data.GitSSHPrivateKeyPath.ValueString(),
 		GitHTTPProxyURL:      data.GitHTTPProxyURL.ValueString(),
-		RemoteRepoBuildMode:  true, // Cache probes are always done based on the remote state.
+		RemoteRepoBuildMode:  data.RemoteRepoBuildMode.ValueBool(),
 		RemoteRepoDir:        filepath.Join(tmpDir, "repo"),
 		SSLCertBase64:        data.SSLCertBase64.ValueString(),
 
