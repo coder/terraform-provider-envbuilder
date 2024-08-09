@@ -38,6 +38,7 @@ func TestAccCachedImageDataSource(t *testing.T) {
 					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "id", uuid.Nil.String()),
 					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "exists", "false"),
 					resource.TestCheckResourceAttrSet("envbuilder_cached_image.test", "env.0"),
+					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "remote_repo_build_mode", "true"),
 					// Cached image should be set to the builder image.
 					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "image", deps.BuilderImage),
 					// Inputs should still be present.
@@ -59,6 +60,7 @@ func TestAccCachedImageDataSource(t *testing.T) {
 					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "id", uuid.Nil.String()),
 					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "exists", "false"),
 					resource.TestCheckResourceAttrSet("envbuilder_cached_image.test", "env.0"),
+					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "remote_repo_build_mode", "true"),
 					// Cached image should be set to the builder image.
 					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "image", deps.BuilderImage),
 					// Inputs should still be present.
@@ -83,6 +85,7 @@ func TestAccCachedImageDataSource(t *testing.T) {
 					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "cache_repo", deps.CacheRepo),
 					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "extra_env.FOO", "bar"),
 					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "git_url", deps.Repo.URL),
+					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "remote_repo_build_mode", "true"),
 					// Should be empty
 					resource.TestCheckNoResourceAttr("envbuilder_cached_image.test", "git_username"),
 					resource.TestCheckNoResourceAttr("envbuilder_cached_image.test", "git_password"),

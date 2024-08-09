@@ -339,7 +339,8 @@ func (r *CachedImageResource) Read(ctx context.Context, req resource.ReadRequest
 		data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_GIT_PASSWORD", data.GitPassword)
 	}
 	if !data.RemoteRepoBuildMode.IsNull() {
-		data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_REMOTE_REPO_BUILD_MODE", data.RemoteRepoBuildMode)
+		// Default to remote build mode.
+		data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_REMOTE_REPO_BUILD_MODE", types.BoolValue(true))
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -391,7 +392,8 @@ func (r *CachedImageResource) Create(ctx context.Context, req resource.CreateReq
 		data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_GIT_PASSWORD", data.GitPassword)
 	}
 	if !data.RemoteRepoBuildMode.IsNull() {
-		data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_REMOTE_REPO_BUILD_MODE", data.RemoteRepoBuildMode)
+		// Default to remote build mode.
+		data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_REMOTE_REPO_BUILD_MODE", types.BoolValue(true))
 	}
 
 	// Save data into Terraform state
