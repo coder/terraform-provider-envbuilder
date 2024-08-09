@@ -95,6 +95,8 @@ func TestAccCachedImageDataSource(t *testing.T) {
 					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.0", "FOO=bar"),
 					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.1", fmt.Sprintf("ENVBUILDER_CACHE_REPO=%s", deps.CacheRepo)),
 					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.2", fmt.Sprintf("ENVBUILDER_GIT_URL=%s", deps.Repo.URL)),
+					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.3", "ENVBUILDER_REMOTE_REPO_BUILD_MODE=true"),
+					resource.TestCheckNoResourceAttr("envbuilder_cached_image.test", "env.4"),
 				),
 			},
 			// Should produce an empty plan after apply
