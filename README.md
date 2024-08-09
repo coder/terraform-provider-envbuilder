@@ -7,42 +7,7 @@ If it is found that building a particular dev container would produce the same i
 
 ## Usage
 
-Below is a very basic usage example. This checks a local registry running on port 5000 for an image built from the [Envbuilder Starter Devcontainer repo](https://github.com/coder/envbuilder-starter-devcontainer).
-
-```terraform
-terraform {
-  required_providers {
-    envbuilder = {
-      source = "coder/envbuilder"
-    }
-  }
-}
-
-resource "envbuilder_cached_image" "example" {
-  builder_image = "ghcr.io/coder/envbuilder:latest"
-  git_url       = "https://github.com/coder/envbuilder-starter-devcontainer"
-  cache_repo    = "localhost:5000"
-}
-
-output "builder_image" {
-  value = envbuilder_cached_image.example.builder_image
-}
-
-output "exists" {
-  value = envbuilder_cached_image.example.exists
-}
-
-output "id" {
-  value = envbuilder_cached_image.example.id
-}
-
-output "image" {
-  value = envbuilder_cached_image.example.image
-}
-
-```
-
-Take a look at [`envbuilder_cached_image_resource.tf`](./examples/resources/envbuilder_cached_image/envbuilder_cached_image_resource.tf) folder for a more detailed example.
+Take a look at [`envbuilder_cached_image_resource.tf`](./examples/resources/envbuilder_cached_image/envbuilder_cached_image_resource.tf) folder for a detailed usage example.
 
 For use with [Coder](https://github.com/coder/coder), see the [Dev Containers documentation](https://coder.com/docs/templates/dev-containers) and check out the example templates:
 - [Docker](https://github.com/coder/coder/tree/main/examples/templates/devcontainer-docker)
