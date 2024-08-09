@@ -2,6 +2,19 @@
 
 The `terraform-provider-envbuilder` is a Terraform provider that acts as a helper for setting up [`envbuilder`](https://envbuilder.sh) environments.
 
+It is used to determine if a pre-built image of a dev container built from a given Git repository is present in a given Docker registry.
+If it is found that building a particular dev container would produce the same image that is already present in the remote registry, then that image can be used to start the container instead, skipping over the build phase.
+
+## Usage
+
+Take a look at the [`envbuilder_cached_image_resource.tf`](./examples/resources/envbuilder_cached_image/envbuilder_cached_image_resource.tf) example for a detailed usage example.
+
+For use with [Coder](https://github.com/coder/coder), see the [Dev Containers documentation](https://coder.com/docs/templates/dev-containers) and check out the example templates:
+- [Docker](https://github.com/coder/coder/tree/main/examples/templates/devcontainer-docker)
+- [Kubernetes](https://github.com/coder/coder/tree/main/examples/templates/devcontainer-kuberntes)
+- [AWS VM](https://github.com/coder/coder/tree/main/examples/templates/devcontainer-aws-vm)
+- [GCP VM](https://github.com/coder/coder/tree/main/examples/templates/devcontainer-gcp-vm)
+
 ## Requirements
 
 - [Terraform](https://developer.hashicorp.com/terraform/downloads) >= 1.0
