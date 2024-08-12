@@ -135,17 +135,19 @@ func startSSHServer(ctx context.Context, t testing.TB) string {
 				_, _ = io.Copy(in, s)
 				_ = in.Close()
 			}()
+			outCopyDone := make(chan struct{})
 			go func() {
 				_, _ = io.Copy(s, out)
 				_ = out.Close()
-				_ = s.CloseWrite()
+				close(outCopyDone)
 			}()
 			err = cmd.Wait()
 			if err != nil {
 				t.Logf("command failed: %s", err)
 			}
+			<-outCopyDone
 
-			t.Logf("session ended: %s", s.RawCommand())
+			t.Logf("session ended (cmd=%q, code=%d)", s.RawCommand(), cmd.ProcessState.ExitCode())
 
 			err = s.Exit(cmd.ProcessState.ExitCode())
 			if err != nil {
