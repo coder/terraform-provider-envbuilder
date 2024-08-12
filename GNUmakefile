@@ -41,7 +41,7 @@ test-registry-container: .registry-cache
 
 # Pulls images referenced in integration tests and pushes them to the local cache.
 .PHONY: test-images-push
-test-images-push: .registry-cache/docker/registry/v2/repositories/test-ubuntu .registry-cache/docker/registry/v2/repositories/test-envbuilder
+test-images-push: .registry-cache/docker/registry/v2/repositories/test-ubuntu .registry-cache/docker/registry/v2/repositories/envbuilder
 
 .PHONY: test-images-pull
 test-images-pull:
@@ -56,5 +56,5 @@ test-images-pull:
 .registry-cache/docker/registry/v2/repositories/test-ubuntu:
 	docker push localhost:5000/test-ubuntu:latest
 
-.registry-cache/docker/registry/v2/repositories/test-envbuilder:
+.registry-cache/docker/registry/v2/repositories/envbuilder:
 	docker push localhost:5000/envbuilder:latest
