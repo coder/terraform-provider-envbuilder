@@ -47,8 +47,8 @@ test-images-push: .registry-cache/docker/registry/v2/repositories/test-ubuntu .r
 test-images-pull:
 	docker pull ubuntu:latest
 	docker tag ubuntu:latest localhost:5000/test-ubuntu:latest
-	docker pull ghcr.io/coder/envbuilder:latest
-	docker tag ghcr.io/coder/envbuilder:latest localhost:5000/envbuilder:latest
+	docker pull ghcr.io/coder/envbuilder-preview:latest
+	docker tag ghcr.io/coder/envbuilder-preview:latest localhost:5000/envbuilder:latest
 
 .registry-cache:
 	mkdir -p .registry-cache && chmod -R ag+w .registry-cache
