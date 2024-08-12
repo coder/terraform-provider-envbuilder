@@ -74,7 +74,7 @@ func quote(s string) string {
 func setup(ctx context.Context, t testing.TB, files map[string]string) testDependencies {
 	t.Helper()
 
-	envbuilderImage := getEnvOrDefault("ENVBUILDER_IMAGE", "ghcr.io/coder/envbuilder-preview")
+	envbuilderImage := getEnvOrDefault("ENVBUILDER_IMAGE", "ghcr.io/coder/envbuilder")
 	envbuilderVersion := getEnvOrDefault("ENVBUILDER_VERSION", "latest")
 	envbuilderImageRef := envbuilderImage + ":" + envbuilderVersion
 
