@@ -292,7 +292,11 @@ func (r *CachedImageResource) Read(ctx context.Context, req resource.ReadRequest
 	// If the previous state is that Image == BuilderImage, then we previously did
 	// not find the image. We will need to run another cache probe.
 	if data.Image.Equal(data.BuilderImage) {
-		tflog.Debug(ctx, "Image previously not found. Recreating.", map[string]any{"ref": data.Image.ValueString()})
+		resp.Diagnostics.AddWarning(
+			"Re-running cache probe due to previous miss.",
+			fmt.Sprintf(`The previous state specifies image == builder_image %q, which indicates a previous cache miss.`,
+				data.Image.ValueString(),
+			))
 		resp.State.RemoveResource(ctx)
 		return
 	}
@@ -301,12 +305,22 @@ func (r *CachedImageResource) Read(ctx context.Context, req resource.ReadRequest
 	img, err := getRemoteImage(data.Image.ValueString())
 	if err != nil {
 		if !strings.Contains(err.Error(), "MANIFEST_UNKNOWN") {
-			resp.Diagnostics.AddError("Error checking remote image", err.Error())
+			// Explicitly not making this an error diag.
+			resp.Diagnostics.AddWarning("Unable to check remote image.",
+				fmt.Sprintf("The repository %q returned the following error while checking for a cached image %q: %q",
+					data.CacheRepo.ValueString(),
+					data.Image.ValueString(),
+					err.Error(),
+				))
 			return
 		}
 		// Image does not exist any longer! Remove the resource so we can re-create
 		// it next time.
-		tflog.Debug(ctx, "Remote image does not exist any longer. Recreating.", map[string]any{"ref": data.Image.ValueString()})
+		resp.Diagnostics.AddWarning("Previously built image not found, recreating.",
+			fmt.Sprintf("The repository %q does not contain the cached image %q. It will be rebuilt in the next apply.",
+				data.CacheRepo.ValueString(),
+				data.Image.ValueString(),
+			))
 		resp.State.RemoveResource(ctx)
 		return
 	}
@@ -365,7 +379,11 @@ func (r *CachedImageResource) Create(ctx context.Context, req resource.CreateReq
 		// FIXME: there are legit errors that can crop up here.
 		// We should add a sentinel error in Kaniko for uncached layers, and check
 		// it here.
-		tflog.Info(ctx, "cached image not found", map[string]any{"err": err.Error()})
+		resp.Diagnostics.AddWarning("Cached image not found.", fmt.Sprintf(
+			"Failed to find cached image in repository %q. It will be rebuilt in the next apply. Error: %s",
+			data.CacheRepo.ValueString(),
+			err.Error(),
+		))
 		data.Image = data.BuilderImage
 	} else if digest, err := cachedImg.Digest(); err != nil {
 		// There's something seriously up with this image!
