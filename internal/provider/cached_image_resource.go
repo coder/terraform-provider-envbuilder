@@ -306,7 +306,7 @@ func (r *CachedImageResource) Read(ctx context.Context, req resource.ReadRequest
 	if err != nil {
 		if !strings.Contains(err.Error(), "MANIFEST_UNKNOWN") {
 			// Explicitly not making this an error diag.
-			resp.Diagnostics.AddWarning("Unable to check remote image!",
+			resp.Diagnostics.AddWarning("Unable to check remote image.",
 				fmt.Sprintf("The repository %q returned the following error while checking for a cached image %q: %q",
 					data.CacheRepo.ValueString(),
 					data.Image.ValueString(),
@@ -316,7 +316,7 @@ func (r *CachedImageResource) Read(ctx context.Context, req resource.ReadRequest
 		}
 		// Image does not exist any longer! Remove the resource so we can re-create
 		// it next time.
-		resp.Diagnostics.AddWarning("Previously built image not found, recreating!",
+		resp.Diagnostics.AddWarning("Previously built image not found, recreating.",
 			fmt.Sprintf("The repository %q does not contain the cached image %q. It will be rebuilt in the next apply.",
 				data.CacheRepo.ValueString(),
 				data.Image.ValueString(),
@@ -379,7 +379,7 @@ func (r *CachedImageResource) Create(ctx context.Context, req resource.CreateReq
 		// FIXME: there are legit errors that can crop up here.
 		// We should add a sentinel error in Kaniko for uncached layers, and check
 		// it here.
-		resp.Diagnostics.AddWarning("Cached image not found!", fmt.Sprintf(
+		resp.Diagnostics.AddWarning("Cached image not found.", fmt.Sprintf(
 			"Failed to find cached image in repository %q. It will be rebuilt in the next apply. Error: %s",
 			data.CacheRepo.ValueString(),
 			err.Error(),
