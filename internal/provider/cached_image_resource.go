@@ -22,6 +22,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/google/uuid"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
@@ -631,20 +632,48 @@ func extractEnvbuilderFromImage(ctx context.Context, imgRef, destPath string) er
 	return fmt.Errorf("extract envbuilder binary from image %q: %w", imgRef, os.ErrNotExist)
 }
 
-// NOTE: the String() method of Terraform values will evalue to `<null>` if unknown.
-// Check IsUnknown() first before calling String().
-type stringable interface {
-	IsUnknown() bool
-	IsNull() bool
-	String() string
+// The below interfaces are to handle converting Terraform types can be converted to a string.
+// The String() method on an attr.Value creates a 'human-readable' version of the type, which
+// leads to quotes, escaped characters, and other assorted sadness.
+type valuestringer interface {
+	ValueString() string
 }
 
-func appendKnownEnvToList(list types.List, key string, value stringable) types.List {
+type valuebooler interface {
+	ValueBool() bool
+}
+
+type valueint64er interface {
+	ValueInt64() int64
+}
+
+// tfValueToString converts an attr.Value to its string representation
+// based on its implementation of the above interfaces.
+func tfValueToString(val attr.Value) string {
+	if val.IsUnknown() || val.IsNull() {
+		return ""
+	}
+	if vs, ok := val.(valuestringer); ok {
+		return vs.ValueString()
+	}
+	if vb, ok := val.(valuebooler); ok {
+		return fmt.Sprintf("%t", vb.ValueBool())
+	}
+	if vi, ok := val.(valueint64er); ok {
+		return fmt.Sprintf("%d", vi.ValueInt64())
+	}
+	panic(fmt.Errorf("tfValueToString: value %T is not a supported type", val))
+}
+
+func appendKnownEnvToList(list types.List, key string, value attr.Value) types.List {
 	if value.IsUnknown() || value.IsNull() {
 		return list
 	}
-	val := strings.Trim(value.String(), `"`)
-	elem := types.StringValue(fmt.Sprintf("%s=%s", key, val))
+	var sb strings.Builder
+	_, _ = sb.WriteString(key)
+	_, _ = sb.WriteRune('=')
+	_, _ = sb.WriteString(tfValueToString(value))
+	elem := types.StringValue(sb.String())
 	list, _ = types.ListValue(types.StringType, append(list.Elements(), elem))
 	return list
 }
@@ -652,13 +681,7 @@ func appendKnownEnvToList(list types.List, key string, value stringable) types.L
 func tfListToStringSlice(l types.List) []string {
 	var ss []string
 	for _, el := range l.Elements() {
-		if sv, ok := el.(stringable); !ok {
-			panic(fmt.Sprintf("developer error: element %+v must be stringable", el))
-		} else if sv.IsUnknown() {
-			ss = append(ss, "")
-		} else {
-			ss = append(ss, sv.String())
-		}
+		ss = append(ss, tfValueToString(el))
 	}
 	return ss
 }

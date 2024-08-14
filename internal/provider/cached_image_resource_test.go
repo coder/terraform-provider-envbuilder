@@ -20,7 +20,8 @@ func TestAccCachedImageResource(t *testing.T) {
 	}
 
 	deps := setup(ctx, t, files)
-	deps.ExtraEnv["FOO"] = "bar"
+	deps.ExtraEnv["FOO"] = `bar
+baz` // THIS IS A LOAD-BEARING NEWLINE. DO NOT REMOVE.
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
@@ -42,7 +43,7 @@ func TestAccCachedImageResource(t *testing.T) {
 					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "image", deps.BuilderImage),
 					// Inputs should still be present.
 					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "cache_repo", deps.CacheRepo),
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "extra_env.FOO", "bar"),
+					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "extra_env.FOO", "bar\nbaz"),
 					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "git_url", deps.Repo.URL),
 					// Should be empty
 					resource.TestCheckNoResourceAttr("envbuilder_cached_image.test", "git_username"),
@@ -63,7 +64,7 @@ func TestAccCachedImageResource(t *testing.T) {
 					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "image", deps.BuilderImage),
 					// Inputs should still be present.
 					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "cache_repo", deps.CacheRepo),
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "extra_env.FOO", "bar"),
+					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "extra_env.FOO", "bar\nbaz"),
 					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "git_url", deps.Repo.URL),
 					// Should be empty
 					resource.TestCheckNoResourceAttr("envbuilder_cached_image.test", "git_username"),
@@ -81,7 +82,7 @@ func TestAccCachedImageResource(t *testing.T) {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					// Inputs should still be present.
 					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "cache_repo", deps.CacheRepo),
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "extra_env.FOO", "bar"),
+					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "extra_env.FOO", "bar\nbaz"),
 					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "git_url", deps.Repo.URL),
 					// Should be empty
 					resource.TestCheckNoResourceAttr("envbuilder_cached_image.test", "git_username"),
@@ -92,7 +93,7 @@ func TestAccCachedImageResource(t *testing.T) {
 					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "exists", "true"),
 					resource.TestCheckResourceAttrSet("envbuilder_cached_image.test", "image"),
 					resource.TestCheckResourceAttrWith("envbuilder_cached_image.test", "image", quotedPrefix(deps.CacheRepo)),
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.0", "FOO=bar"),
+					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.0", "FOO=bar\nbaz"),
 					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.1", fmt.Sprintf("ENVBUILDER_CACHE_REPO=%s", deps.CacheRepo)),
 					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.2", fmt.Sprintf("ENVBUILDER_GIT_URL=%s", deps.Repo.URL)),
 					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.3", "ENVBUILDER_REMOTE_REPO_BUILD_MODE=true"),
