@@ -632,34 +632,21 @@ func extractEnvbuilderFromImage(ctx context.Context, imgRef, destPath string) er
 	return fmt.Errorf("extract envbuilder binary from image %q: %w", imgRef, os.ErrNotExist)
 }
 
-// The below interfaces are to handle converting Terraform types can be converted to a string.
-// The String() method on an attr.Value creates a 'human-readable' version of the type, which
-// leads to quotes, escaped characters, and other assorted sadness.
-type valuestringer interface {
-	ValueString() string
-}
-
-type valuebooler interface {
-	ValueBool() bool
-}
-
-type valueint64er interface {
-	ValueInt64() int64
-}
-
 // tfValueToString converts an attr.Value to its string representation
-// based on its implementation of the above interfaces.
+// based on its Terraform type. This is needed because the String()
+// method on an attr.Value creates a 'human-readable' version of the type, which
+// leads to quotes, escaped characters, and other assorted sadness.
 func tfValueToString(val attr.Value) string {
 	if val.IsUnknown() || val.IsNull() {
 		return ""
 	}
-	if vs, ok := val.(valuestringer); ok {
+	if vs, ok := val.(interface{ ValueString() string }); ok {
 		return vs.ValueString()
 	}
-	if vb, ok := val.(valuebooler); ok {
+	if vb, ok := val.(interface{ ValueBool() bool }); ok {
 		return fmt.Sprintf("%t", vb.ValueBool())
 	}
-	if vi, ok := val.(valueint64er); ok {
+	if vi, ok := val.(interface{ ValueInt64() int64 }); ok {
 		return fmt.Sprintf("%d", vi.ValueInt64())
 	}
 	panic(fmt.Errorf("tfValueToString: value %T is not a supported type", val))
