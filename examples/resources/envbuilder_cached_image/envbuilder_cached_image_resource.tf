@@ -66,10 +66,11 @@ resource "envbuilder_cached_image" "example" {
   builder_image = var.builder_image
   git_url       = var.repo_url
   cache_repo    = local.cache_repo
+  insecure      = true
   extra_env = {
     "ENVBUILDER_VERBOSE" : "true"
     "ENVBUILDER_INSECURE" : "true" # due to local registry
-    "ENVBUILDER_INIT_SCRIPT" : "sleep infinity"
+    "ENVBUILDER_INIT_SCRIPT" : "#!/usr/bin/env bash\necho Hello && sleep infinity"
     "ENVBUILDER_PUSH_IMAGE" : "true"
   }
   depends_on = [docker_container.registry]
@@ -77,8 +78,8 @@ resource "envbuilder_cached_image" "example" {
 
 // Run the cached image. Depending on the contents of
 // the cache repo, this will either be var.builder_image
-// or a previously built image pusehd to var.cache_repo.
-// Running `terraform apply` once (assuming empty cache) 
+// or a previously built image pushed to var.cache_repo.
+// Running `terraform apply` once (assuming empty cache)
 // will result in the builder image running, and the built
 // image being pushed to the cache repo.
 // Running `terraform apply` again will result in the
@@ -105,4 +106,3 @@ output "id" {
 output "image" {
   value = envbuilder_cached_image.example.image
 }
-
