@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	kconfig "github.com/GoogleContainerTools/kaniko/pkg/config"
@@ -23,6 +24,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
@@ -31,6 +33,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
@@ -77,6 +80,7 @@ type CachedImageResourceModel struct {
 	WorkspaceFolder      types.String `tfsdk:"workspace_folder"`
 	// Computed "outputs".
 	Env    types.List   `tfsdk:"env"`
+	EnvMap types.Map    `tfsdk:"env_map"`
 	Exists types.Bool   `tfsdk:"exists"`
 	ID     types.String `tfsdk:"id"`
 	Image  types.String `tfsdk:"image"`
@@ -226,14 +230,22 @@ func (r *CachedImageResource) Schema(ctx context.Context, req resource.SchemaReq
 			},
 
 			// Computed "outputs".
-			// TODO(mafredri): Map vs List? Support both?
 			"env": schema.ListAttribute{
-				MarkdownDescription: "Computed envbuilder configuration to be set for the container. May contain secrets.",
+				MarkdownDescription: "Computed envbuilder configuration to be set for the container in the form of a list of stringss of `key=value`. May contain secrets.",
 				ElementType:         types.StringType,
 				Computed:            true,
 				Sensitive:           true,
 				PlanModifiers: []planmodifier.List{
 					listplanmodifier.RequiresReplace(),
+				},
+			},
+			"env_map": schema.MapAttribute{
+				MarkdownDescription: "Computed envbuilder configuration to be set for the container in the form of a key-value map. May contain secrets.",
+				ElementType:         types.StringType,
+				Computed:            true,
+				Sensitive:           true,
+				PlanModifiers: []planmodifier.Map{
+					mapplanmodifier.RequiresReplace(),
 				},
 			},
 			"exists": schema.BoolAttribute{
@@ -338,27 +350,35 @@ func (r *CachedImageResource) Read(ctx context.Context, req resource.ReadRequest
 	data.Exists = types.BoolValue(true)
 
 	// Set the expected environment variables.
+	env := make(map[string]string)
 	for key, elem := range data.ExtraEnv.Elements() {
-		data.Env = appendKnownEnvToList(data.Env, key, elem)
+		env[key] = tfValueToString(elem)
 	}
 
-	data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_CACHE_REPO", data.CacheRepo)
-	data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_GIT_URL", data.GitURL)
+	env["ENVBUILDER_CACHE_REPO"] = tfValueToString(data.CacheRepo)
+	env["ENVBUILDER_GIT_URL"] = tfValueToString(data.GitURL)
+
 	if !data.CacheTTLDays.IsNull() {
-		data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_CACHE_TTL_DAYS", data.CacheTTLDays)
+		env["ENVBUILDER_CACHE_TTL_DAYS"] = tfValueToString(data.CacheTTLDays)
 	}
 	if !data.GitUsername.IsNull() {
-		data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_GIT_USERNAME", data.GitUsername)
+		env["ENVBUILDER_GIT_USERNAME"] = tfValueToString(data.GitUsername)
 	}
 	if !data.GitPassword.IsNull() {
-		data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_GIT_PASSWORD", data.GitPassword)
+		env["ENVBUILDER_GIT_PASSWORD"] = tfValueToString(data.GitPassword)
 	}
 	// Default to remote build mode.
 	if data.RemoteRepoBuildMode.IsNull() {
-		data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_REMOTE_REPO_BUILD_MODE", types.BoolValue(true))
+		env["ENVBUILDER_REMOTE_REPO_BUILD_MODE"] = "true"
 	} else {
-		data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_REMOTE_REPO_BUILD_MODE", data.RemoteRepoBuildMode)
+		env["ENVBUILDER_REMOTE_REPO_BUILD_MODE"] = tfValueToString(data.RemoteRepoBuildMode)
 	}
+
+	var diag diag.Diagnostics
+	data.EnvMap, diag = basetypes.NewMapValueFrom(ctx, types.StringType, env)
+	resp.Diagnostics.Append(diag...)
+	data.Env, diag = basetypes.NewListValueFrom(ctx, types.StringType, sortedKeyValues(env))
+	resp.Diagnostics.Append(diag...)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -396,28 +416,35 @@ func (r *CachedImageResource) Create(ctx context.Context, req resource.CreateReq
 		data.ID = types.StringValue(digest.String())
 	}
 	// Compute the env attribute from the config map.
-	// TODO(mafredri): Convert any other relevant attributes given via schema.
+	env := make(map[string]string)
 	for key, elem := range data.ExtraEnv.Elements() {
-		data.Env = appendKnownEnvToList(data.Env, key, elem)
+		env[key] = tfValueToString(elem)
 	}
 
-	data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_CACHE_REPO", data.CacheRepo)
-	data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_GIT_URL", data.GitURL)
+	env["ENVBUILDER_CACHE_REPO"] = tfValueToString(data.CacheRepo)
+	env["ENVBUILDER_GIT_URL"] = tfValueToString(data.GitURL)
+
 	if !data.CacheTTLDays.IsNull() {
-		data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_CACHE_TTL_DAYS", data.CacheTTLDays)
+		env["ENVBUILDER_CACHE_TTL_DAYS"] = tfValueToString(data.CacheTTLDays)
 	}
 	if !data.GitUsername.IsNull() {
-		data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_GIT_USERNAME", data.GitUsername)
+		env["ENVBUILDER_GIT_USERNAME"] = tfValueToString(data.GitUsername)
 	}
 	if !data.GitPassword.IsNull() {
-		data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_GIT_PASSWORD", data.GitPassword)
+		env["ENVBUILDER_GIT_PASSWORD"] = tfValueToString(data.GitPassword)
 	}
 	// Default to remote build mode.
 	if data.RemoteRepoBuildMode.IsNull() {
-		data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_REMOTE_REPO_BUILD_MODE", types.BoolValue(true))
+		env["ENVBUILDER_REMOTE_REPO_BUILD_MODE"] = "true"
 	} else {
-		data.Env = appendKnownEnvToList(data.Env, "ENVBUILDER_REMOTE_REPO_BUILD_MODE", data.RemoteRepoBuildMode)
+		env["ENVBUILDER_REMOTE_REPO_BUILD_MODE"] = tfValueToString(data.RemoteRepoBuildMode)
 	}
+
+	var diag diag.Diagnostics
+	data.EnvMap, diag = basetypes.NewMapValueFrom(ctx, types.StringType, env)
+	resp.Diagnostics.Append(diag...)
+	data.Env, diag = basetypes.NewListValueFrom(ctx, types.StringType, sortedKeyValues(env))
+	resp.Diagnostics.Append(diag...)
 
 	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -652,19 +679,8 @@ func tfValueToString(val attr.Value) string {
 	panic(fmt.Errorf("tfValueToString: value %T is not a supported type", val))
 }
 
-func appendKnownEnvToList(list types.List, key string, value attr.Value) types.List {
-	if value.IsUnknown() || value.IsNull() {
-		return list
-	}
-	var sb strings.Builder
-	_, _ = sb.WriteString(key)
-	_, _ = sb.WriteRune('=')
-	_, _ = sb.WriteString(tfValueToString(value))
-	elem := types.StringValue(sb.String())
-	list, _ = types.ListValue(types.StringType, append(list.Elements(), elem))
-	return list
-}
-
+// tfListToStringSlice converts a types.List to a []string by calling
+// tfValueToString on each element.
 func tfListToStringSlice(l types.List) []string {
 	var ss []string
 	for _, el := range l.Elements() {
@@ -691,4 +707,20 @@ func tfLogFunc(ctx context.Context) eblog.Func {
 		}
 		logFn(ctx, fmt.Sprintf(format, args...))
 	}
+}
+
+// sortedKeyValues returns the keys and values of the map in the form "key=value"
+// sorted by key in lexicographical order.
+func sortedKeyValues(m map[string]string) []string {
+	pairs := make([]string, 0, len(m))
+	var sb strings.Builder
+	for k := range m {
+		_, _ = sb.WriteString(k)
+		_, _ = sb.WriteRune('=')
+		_, _ = sb.WriteString(m[k])
+		pairs = append(pairs, sb.String())
+		sb.Reset()
+	}
+	sort.Strings(pairs)
+	return pairs
 }
