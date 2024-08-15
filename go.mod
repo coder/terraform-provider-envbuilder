@@ -11,7 +11,7 @@ replace tailscale.com => github.com/coder/tailscale v1.1.1-0.20240702054557-aa55
 require (
 	github.com/GoogleContainerTools/kaniko v1.9.2
 	github.com/coder/envbuilder v1.0.0-rc.5.0.20240815111948-e6283db826e8
-	github.com/docker/docker v26.1.4+incompatible
+	github.com/docker/docker v26.1.5+incompatible
 	github.com/gliderlabs/ssh v0.3.7
 	github.com/go-git/go-billy/v5 v5.5.0
 	github.com/go-git/go-git/v5 v5.12.0
