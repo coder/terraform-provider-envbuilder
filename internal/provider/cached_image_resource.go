@@ -231,7 +231,7 @@ func (r *CachedImageResource) Schema(ctx context.Context, req resource.SchemaReq
 
 			// Computed "outputs".
 			"env": schema.ListAttribute{
-				MarkdownDescription: "Computed envbuilder configuration to be set for the container in the form of a list of stringss of `key=value`. May contain secrets.",
+				MarkdownDescription: "Computed envbuilder configuration to be set for the container in the form of a list of strings of `key=value`. May contain secrets.",
 				ElementType:         types.StringType,
 				Computed:            true,
 				Sensitive:           true,
