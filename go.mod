@@ -10,7 +10,7 @@ replace tailscale.com => github.com/coder/tailscale v1.1.1-0.20240702054557-aa55
 
 require (
 	github.com/GoogleContainerTools/kaniko v1.9.2
-	github.com/coder/envbuilder v1.0.0-rc.0.0.20240807151028-6e5bfa5faa29
+	github.com/coder/envbuilder v1.0.0-rc.5.0.20240815111948-e6283db826e8
 	github.com/docker/docker v26.1.4+incompatible
 	github.com/gliderlabs/ssh v0.3.7
 	github.com/go-git/go-billy/v5 v5.5.0
@@ -248,7 +248,7 @@ require (
 	github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
-	github.com/skeema/knownhosts v1.2.2 // indirect
+	github.com/skeema/knownhosts v1.3.0 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/spf13/afero v1.11.0 // indirect
 	github.com/spf13/cast v1.6.0 // indirect
