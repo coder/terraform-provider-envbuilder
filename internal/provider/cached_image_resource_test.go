@@ -48,6 +48,8 @@ RUN date > /date.txt`,
 			//nolint: paralleltest
 			deps := setup(ctx, t, tc.files)
 			deps.ExtraEnv["FOO"] = testEnvValue
+			deps.ExtraEnv["ENVBUILDER_GIT_URL"] = "https://not.the.real.git/url"
+			deps.ExtraEnv["ENVBUILDER_CACHE_REPO"] = "not-the-real-cache-repo"
 
 			resource.Test(t, resource.TestCase{
 				ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,

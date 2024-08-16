@@ -389,18 +389,29 @@ func (data *CachedImageResourceModel) setComputedEnv(ctx context.Context) diag.D
 	}
 
 	// Do ExtraEnv last so that it can override any other values.
+	// With one exception: ENVBUILDER_CACHE_REPO and ENVBUILDER_GIT_URL are required and should not be overridden.
+	// Other values set by the provider may be overridden, but will generate a warning.
 	var diag, ds diag.Diagnostics
 	if !data.ExtraEnv.IsNull() {
 		for key, elem := range data.ExtraEnv.Elements() {
-			if _, ok := env[key]; ok {
-				// This is a warning because it's possible that the user wants to override
-				// a value set by the provider.
+			switch key {
+			// These are required and should not be overridden.
+			case "ENVBUILDER_CACHE_REPO", "ENVBUILDER_GIT_URL":
 				diag.AddAttributeWarning(path.Root("extra_env"),
-					"Overriding provider environment variable",
-					fmt.Sprintf("The key %q in extra_env overrides an environment variable set by the provider.", key),
+					"Cannot override required environment variable",
+					fmt.Sprintf("The key %q in extra_env cannot be overridden.", key),
 				)
+			default:
+				if _, ok := env[key]; ok {
+					// This is a warning because it's possible that the user wants to override
+					// a value set by the provider.
+					diag.AddAttributeWarning(path.Root("extra_env"),
+						"Overriding provider environment variable",
+						fmt.Sprintf("The key %q in extra_env overrides an environment variable set by the provider.", key),
+					)
+				}
+				env[key] = tfValueToString(elem)
 			}
-			env[key] = tfValueToString(elem)
 		}
 	}
 
