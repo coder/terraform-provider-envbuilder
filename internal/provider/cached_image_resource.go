@@ -25,6 +25,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
@@ -160,7 +161,6 @@ func (r *CachedImageResource) Schema(ctx context.Context, req resource.SchemaReq
 				MarkdownDescription: "(Envbuilder option) Terminates upon a build failure. This is handy when preferring the FALLBACK_IMAGE in cases where no devcontainer.json or image is provided. However, it ensures that the container stops if the build process encounters an error.",
 				Optional:            true,
 			},
-			// TODO(mafredri): Map vs List? Support both?
 			"extra_env": schema.MapAttribute{
 				MarkdownDescription: "Extra environment variables to set for the container. This may include envbuilder options.",
 				ElementType:         types.StringType,
@@ -293,6 +293,124 @@ func (r *CachedImageResource) Configure(ctx context.Context, req resource.Config
 	r.client = client
 }
 
+// setComputedEnv sets data.Env and data.EnvMap based on the values of the
+// other fields in the model.
+func (data *CachedImageResourceModel) setComputedEnv(ctx context.Context) diag.Diagnostics {
+	env := make(map[string]string)
+
+	env["ENVBUILDER_CACHE_REPO"] = tfValueToString(data.CacheRepo)
+	env["ENVBUILDER_GIT_URL"] = tfValueToString(data.GitURL)
+
+	if !data.BaseImageCacheDir.IsNull() {
+		env["ENVBUILDER_BASE_IMAGE_CACHE_DIR"] = tfValueToString(data.BaseImageCacheDir)
+	}
+
+	if !data.BuildContextPath.IsNull() {
+		env["ENVBUILDER_BUILD_CONTEXT_PATH"] = tfValueToString(data.BuildContextPath)
+	}
+
+	if !data.CacheTTLDays.IsNull() {
+		env["ENVBUILDER_CACHE_TTL_DAYS"] = tfValueToString(data.CacheTTLDays)
+	}
+
+	if !data.DevcontainerDir.IsNull() {
+		env["ENVBUILDER_DEVCONTAINER_DIR"] = tfValueToString(data.DevcontainerDir)
+	}
+
+	if !data.DevcontainerJSONPath.IsNull() {
+		env["ENVBUILDER_DEVCONTAINER_JSON_PATH"] = tfValueToString(data.DevcontainerJSONPath)
+	}
+
+	if !data.DockerfilePath.IsNull() {
+		env["ENVBUILDER_DOCKERFILE_PATH"] = tfValueToString(data.DockerfilePath)
+	}
+
+	if !data.DockerConfigBase64.IsNull() {
+		env["ENVBUILDER_DOCKER_CONFIG_BASE64"] = tfValueToString(data.DockerConfigBase64)
+	}
+
+	if !data.ExitOnBuildFailure.IsNull() {
+		env["ENVBUILDER_EXIT_ON_BUILD_FAILURE"] = tfValueToString(data.ExitOnBuildFailure)
+	}
+
+	if !data.FallbackImage.IsNull() {
+		env["ENVBUILDER_FALLBACK_IMAGE"] = tfValueToString(data.FallbackImage)
+	}
+
+	if !data.GitCloneDepth.IsNull() {
+		env["ENVBUILDER_GIT_CLONE_DEPTH"] = tfValueToString(data.GitCloneDepth)
+	}
+
+	if !data.GitCloneSingleBranch.IsNull() {
+		env["ENVBUILDER_GIT_CLONE_SINGLE_BRANCH"] = tfValueToString(data.GitCloneSingleBranch)
+	}
+
+	if !data.GitHTTPProxyURL.IsNull() {
+		env["ENVBUILDER_GIT_HTTP_PROXY_URL"] = tfValueToString(data.GitHTTPProxyURL)
+	}
+
+	if !data.GitSSHPrivateKeyPath.IsNull() {
+		env["ENVBUILDER_GIT_SSH_PRIVATE_KEY_PATH"] = tfValueToString(data.GitSSHPrivateKeyPath)
+	}
+
+	if !data.GitUsername.IsNull() {
+		env["ENVBUILDER_GIT_USERNAME"] = tfValueToString(data.GitUsername)
+	}
+
+	if !data.GitPassword.IsNull() {
+		env["ENVBUILDER_GIT_PASSWORD"] = tfValueToString(data.GitPassword)
+	}
+
+	if !data.IgnorePaths.IsNull() {
+		env["ENVBUILDER_IGNORE_PATHS"] = strings.Join(tfListToStringSlice(data.IgnorePaths), ",")
+	}
+
+	if !data.Insecure.IsNull() {
+		env["ENVBUILDER_INSECURE"] = tfValueToString(data.Insecure)
+	}
+
+	// Default to remote build mode.
+	if data.RemoteRepoBuildMode.IsNull() {
+		env["ENVBUILDER_REMOTE_REPO_BUILD_MODE"] = "true"
+	} else {
+		env["ENVBUILDER_REMOTE_REPO_BUILD_MODE"] = tfValueToString(data.RemoteRepoBuildMode)
+	}
+
+	if !data.SSLCertBase64.IsNull() {
+		env["ENVBUILDER_SSL_CERT_BASE64"] = tfValueToString(data.SSLCertBase64)
+	}
+
+	if !data.Verbose.IsNull() {
+		env["ENVBUILDER_VERBOSE"] = tfValueToString(data.Verbose)
+	}
+
+	if !data.WorkspaceFolder.IsNull() {
+		env["ENVBUILDER_WORKSPACE_FOLDER"] = tfValueToString(data.WorkspaceFolder)
+	}
+
+	// Do ExtraEnv last so that it can override any other values.
+	var diag, ds diag.Diagnostics
+	if !data.ExtraEnv.IsNull() {
+		for key, elem := range data.ExtraEnv.Elements() {
+			if _, ok := env[key]; ok {
+				// This is a warning because it's possible that the user wants to override
+				// a value set by the provider.
+				diag.AddAttributeWarning(path.Root("extra_env"),
+					"Overriding provider environment variable",
+					fmt.Sprintf("The key %q in extra_env overrides an environment variable set by the provider.", key),
+				)
+			}
+			env[key] = tfValueToString(elem)
+		}
+	}
+
+	data.EnvMap, ds = basetypes.NewMapValueFrom(ctx, types.StringType, env)
+	diag = append(diag, ds...)
+	data.Env, ds = basetypes.NewListValueFrom(ctx, types.StringType, sortedKeyValues(env))
+	diag = append(diag, ds...)
+	return diag
+}
+
 func (r *CachedImageResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var data CachedImageResourceModel
 
@@ -350,35 +468,7 @@ func (r *CachedImageResource) Read(ctx context.Context, req resource.ReadRequest
 	data.Exists = types.BoolValue(true)
 
 	// Set the expected environment variables.
-	env := make(map[string]string)
-	for key, elem := range data.ExtraEnv.Elements() {
-		env[key] = tfValueToString(elem)
-	}
-
-	env["ENVBUILDER_CACHE_REPO"] = tfValueToString(data.CacheRepo)
-	env["ENVBUILDER_GIT_URL"] = tfValueToString(data.GitURL)
-
-	if !data.CacheTTLDays.IsNull() {
-		env["ENVBUILDER_CACHE_TTL_DAYS"] = tfValueToString(data.CacheTTLDays)
-	}
-	if !data.GitUsername.IsNull() {
-		env["ENVBUILDER_GIT_USERNAME"] = tfValueToString(data.GitUsername)
-	}
-	if !data.GitPassword.IsNull() {
-		env["ENVBUILDER_GIT_PASSWORD"] = tfValueToString(data.GitPassword)
-	}
-	// Default to remote build mode.
-	if data.RemoteRepoBuildMode.IsNull() {
-		env["ENVBUILDER_REMOTE_REPO_BUILD_MODE"] = "true"
-	} else {
-		env["ENVBUILDER_REMOTE_REPO_BUILD_MODE"] = tfValueToString(data.RemoteRepoBuildMode)
-	}
-
-	var diag diag.Diagnostics
-	data.EnvMap, diag = basetypes.NewMapValueFrom(ctx, types.StringType, env)
-	resp.Diagnostics.Append(diag...)
-	data.Env, diag = basetypes.NewListValueFrom(ctx, types.StringType, sortedKeyValues(env))
-	resp.Diagnostics.Append(diag...)
+	resp.Diagnostics.Append(data.setComputedEnv(ctx)...)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -415,36 +505,9 @@ func (r *CachedImageResource) Create(ctx context.Context, req resource.CreateReq
 		data.Image = types.StringValue(fmt.Sprintf("%s@%s", data.CacheRepo.ValueString(), digest))
 		data.ID = types.StringValue(digest.String())
 	}
-	// Compute the env attribute from the config map.
-	env := make(map[string]string)
-	for key, elem := range data.ExtraEnv.Elements() {
-		env[key] = tfValueToString(elem)
-	}
 
-	env["ENVBUILDER_CACHE_REPO"] = tfValueToString(data.CacheRepo)
-	env["ENVBUILDER_GIT_URL"] = tfValueToString(data.GitURL)
-
-	if !data.CacheTTLDays.IsNull() {
-		env["ENVBUILDER_CACHE_TTL_DAYS"] = tfValueToString(data.CacheTTLDays)
-	}
-	if !data.GitUsername.IsNull() {
-		env["ENVBUILDER_GIT_USERNAME"] = tfValueToString(data.GitUsername)
-	}
-	if !data.GitPassword.IsNull() {
-		env["ENVBUILDER_GIT_PASSWORD"] = tfValueToString(data.GitPassword)
-	}
-	// Default to remote build mode.
-	if data.RemoteRepoBuildMode.IsNull() {
-		env["ENVBUILDER_REMOTE_REPO_BUILD_MODE"] = "true"
-	} else {
-		env["ENVBUILDER_REMOTE_REPO_BUILD_MODE"] = tfValueToString(data.RemoteRepoBuildMode)
-	}
-
-	var diag diag.Diagnostics
-	data.EnvMap, diag = basetypes.NewMapValueFrom(ctx, types.StringType, env)
-	resp.Diagnostics.Append(diag...)
-	data.Env, diag = basetypes.NewListValueFrom(ctx, types.StringType, sortedKeyValues(env))
-	resp.Diagnostics.Append(diag...)
+	// Set the expected environment variables.
+	resp.Diagnostics.Append(data.setComputedEnv(ctx)...)
 
 	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -556,6 +619,7 @@ func (r *CachedImageResource) runCacheProbe(ctx context.Context, data CachedImag
 		Insecure:           data.Insecure.ValueBool(),             // might have internal CAs?
 		IgnorePaths:        tfListToStringSlice(data.IgnorePaths), // may need to be specified?
 		// The below options are not relevant and are set to their zero value explicitly.
+		// They must be set by extra_env.
 		CoderAgentSubsystem: nil,
 		CoderAgentToken:     "",
 		CoderAgentURL:       "",

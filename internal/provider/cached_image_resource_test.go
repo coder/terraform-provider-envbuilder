@@ -149,16 +149,21 @@ func assertEnv(t *testing.T, deps testDependencies) resource.TestCheckFunc {
 	return resource.ComposeAggregateTestCheckFunc(
 		// Check that the environment variables are set correctly.
 		resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.0", fmt.Sprintf("ENVBUILDER_CACHE_REPO=%s", deps.CacheRepo)),
-		resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.1", fmt.Sprintf("ENVBUILDER_GIT_URL=%s", deps.Repo.URL)),
-		resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.2", "ENVBUILDER_REMOTE_REPO_BUILD_MODE=true"),
+		resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.1", fmt.Sprintf("ENVBUILDER_GIT_SSH_PRIVATE_KEY_PATH=%s", deps.Repo.Key)),
+		resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.2", fmt.Sprintf("ENVBUILDER_GIT_URL=%s", deps.Repo.URL)),
+		resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.3", "ENVBUILDER_REMOTE_REPO_BUILD_MODE=true"),
+		resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.4", "ENVBUILDER_VERBOSE=true"),
 		// Check that the extra environment variables are set correctly.
-		resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.3", "FOO=bar\nbaz"),
+		resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.5", "FOO=bar\nbaz"),
 		// We should not have any other environment variables set.
-		resource.TestCheckNoResourceAttr("envbuilder_cached_image.test", "env.4"),
+		resource.TestCheckNoResourceAttr("envbuilder_cached_image.test", "env.6"),
+
 		// Check that the same values are set in env_map.
-		resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env_map.FOO", "bar\nbaz"),
 		resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env_map.ENVBUILDER_CACHE_REPO", deps.CacheRepo),
+		resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env_map.ENVBUILDER_GIT_SSH_PRIVATE_KEY_PATH", deps.Repo.Key),
 		resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env_map.ENVBUILDER_GIT_URL", deps.Repo.URL),
 		resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env_map.ENVBUILDER_REMOTE_REPO_BUILD_MODE", "true"),
+		resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env_map.ENVBUILDER_VERBOSE", "true"),
+		resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env_map.FOO", "bar\nbaz"),
 	)
 }
