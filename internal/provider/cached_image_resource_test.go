@@ -24,12 +24,18 @@ func TestAccCachedImageResource(t *testing.T) {
 		files map[string]string
 	}{
 		{
+			// This test case is the simplest possible case: a devcontainer.json.
+			// However, it also makes sure we are able to generate a Dockerfile
+			// from the devcontainer.json.
 			name: "devcontainer only",
 			files: map[string]string{
 				".devcontainer/devcontainer.json": `{"image": "localhost:5000/test-ubuntu:latest"}`,
 			},
 		},
 		{
+			// This test case includes a Dockerfile in addition to the devcontainer.json.
+			// The Dockerfile writes the current date to a file. This is currently not checked but
+			// illustrates that a RUN instruction is cached.
 			name: "devcontainer and Dockerfile",
 			files: map[string]string{
 				".devcontainer/devcontainer.json": `{"build": { "dockerfile": "Dockerfile" }}`,
@@ -46,20 +52,19 @@ RUN date > /date.txt`,
 			resource.Test(t, resource.TestCase{
 				ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 				Steps: []resource.TestStep{
-					// Initial state: cache has not been seeded.
+					// 1) Initial state: cache has not been seeded.
 					{
 						Config:             deps.Config(t),
 						PlanOnly:           true,
 						ExpectNonEmptyPlan: true,
 					},
-					// Should detect that no cached image is present and plan to create the resource.
+					// 2) Should detect that no cached image is present and plan to create the resource.
 					{
 						Config: deps.Config(t),
 						Check: resource.ComposeAggregateTestCheckFunc(
 							// Computed values MUST be present.
 							resource.TestCheckResourceAttr("envbuilder_cached_image.test", "id", uuid.Nil.String()),
 							resource.TestCheckResourceAttr("envbuilder_cached_image.test", "exists", "false"),
-							resource.TestCheckResourceAttrSet("envbuilder_cached_image.test", "env.0"),
 							// Cached image should be set to the builder image.
 							resource.TestCheckResourceAttr("envbuilder_cached_image.test", "image", deps.BuilderImage),
 							// Inputs should still be present.
@@ -70,17 +75,18 @@ RUN date > /date.txt`,
 							resource.TestCheckNoResourceAttr("envbuilder_cached_image.test", "git_username"),
 							resource.TestCheckNoResourceAttr("envbuilder_cached_image.test", "git_password"),
 							resource.TestCheckNoResourceAttr("envbuilder_cached_image.test", "cache_ttl_days"),
+							// Environment variables
+							assertEnv(t, deps),
 						),
 						ExpectNonEmptyPlan: true, // TODO: check the plan.
 					},
-					// Re-running plan should have the same effect.
+					// 3) Re-running plan should have the same effect.
 					{
 						Config: deps.Config(t),
 						Check: resource.ComposeAggregateTestCheckFunc(
 							// Computed values MUST be present.
 							resource.TestCheckResourceAttr("envbuilder_cached_image.test", "id", uuid.Nil.String()),
 							resource.TestCheckResourceAttr("envbuilder_cached_image.test", "exists", "false"),
-							resource.TestCheckResourceAttrSet("envbuilder_cached_image.test", "env.0"),
 							// Cached image should be set to the builder image.
 							resource.TestCheckResourceAttr("envbuilder_cached_image.test", "image", deps.BuilderImage),
 							// Inputs should still be present.
@@ -91,10 +97,12 @@ RUN date > /date.txt`,
 							resource.TestCheckNoResourceAttr("envbuilder_cached_image.test", "git_username"),
 							resource.TestCheckNoResourceAttr("envbuilder_cached_image.test", "git_password"),
 							resource.TestCheckNoResourceAttr("envbuilder_cached_image.test", "cache_ttl_days"),
+							// Environment variables
+							assertEnv(t, deps),
 						),
 						ExpectNonEmptyPlan: true, // TODO: check the plan.
 					},
-					// Now, seed the cache and re-run. We should now successfully create the cached image resource.
+					// 4) Now, seed the cache and re-run. We should now successfully create the cached image resource.
 					{
 						PreConfig: func() {
 							seedCache(ctx, t, deps)
@@ -114,19 +122,16 @@ RUN date > /date.txt`,
 							resource.TestCheckResourceAttr("envbuilder_cached_image.test", "exists", "true"),
 							resource.TestCheckResourceAttrSet("envbuilder_cached_image.test", "image"),
 							resource.TestCheckResourceAttrWith("envbuilder_cached_image.test", "image", quotedPrefix(deps.CacheRepo)),
-							resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.0", "FOO=bar\nbaz"),
-							resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.1", fmt.Sprintf("ENVBUILDER_CACHE_REPO=%s", deps.CacheRepo)),
-							resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.2", fmt.Sprintf("ENVBUILDER_GIT_URL=%s", deps.Repo.URL)),
-							resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.3", "ENVBUILDER_REMOTE_REPO_BUILD_MODE=true"),
-							resource.TestCheckNoResourceAttr("envbuilder_cached_image.test", "env.4"),
+							// Environment variables
+							assertEnv(t, deps),
 						),
 					},
-					// Should produce an empty plan after apply
+					// 5) Should produce an empty plan after apply
 					{
 						Config:   deps.Config(t),
 						PlanOnly: true,
 					},
-					// Ensure idempotence in this state!
+					// 6) Ensure idempotence in this state!
 					{
 						Config:   deps.Config(t),
 						PlanOnly: true,
@@ -135,4 +140,25 @@ RUN date > /date.txt`,
 			})
 		})
 	}
+}
+
+// assertEnv is a test helper that checks the environment variables set on the
+// cached image resource based on the provided test dependencies.
+func assertEnv(t *testing.T, deps testDependencies) resource.TestCheckFunc {
+	t.Helper()
+	return resource.ComposeAggregateTestCheckFunc(
+		// Check that the environment variables are set correctly.
+		resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.0", fmt.Sprintf("ENVBUILDER_CACHE_REPO=%s", deps.CacheRepo)),
+		resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.1", fmt.Sprintf("ENVBUILDER_GIT_URL=%s", deps.Repo.URL)),
+		resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.2", "ENVBUILDER_REMOTE_REPO_BUILD_MODE=true"),
+		// Check that the extra environment variables are set correctly.
+		resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.3", "FOO=bar\nbaz"),
+		// We should not have any other environment variables set.
+		resource.TestCheckNoResourceAttr("envbuilder_cached_image.test", "env.4"),
+		// Check that the same values are set in env_map.
+		resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env_map.FOO", "bar\nbaz"),
+		resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env_map.ENVBUILDER_CACHE_REPO", deps.CacheRepo),
+		resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env_map.ENVBUILDER_GIT_URL", deps.Repo.URL),
+		resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env_map.ENVBUILDER_REMOTE_REPO_BUILD_MODE", "true"),
+	)
 }
