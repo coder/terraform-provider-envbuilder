@@ -38,10 +38,8 @@ func (p *EnvbuilderProvider) Schema(ctx context.Context, req provider.SchemaRequ
 		Attributes: map[string]schema.Attribute{},
 		MarkdownDescription: `# Envbuilder Provider
 
-The Envbuilder provider can be used to check for the presence of a Docker image previously built by [Envbuilder](https://github.com/coder/envbuilder).
-This allows re-using a previously built image pushed to a Docker registry without having to rebuild it.
-An image built by Envbuilder also embeds the Envbuilder binary inside the image, allowing for the image to be used to build other images.
-`,
+The Envbuilder provider can be used to check for the presence of a container image previously built by [Envbuilder](https://github.com/coder/envbuilder).
+This allows re-using a previously built image pushed to a container registry without having to rebuild it.`,
 	}
 }
 
