@@ -3,12 +3,14 @@
 page_title: "envbuilder Provider"
 subcategory: ""
 description: |-
-  
+  The Envbuilder provider can be used to check for the presence of a container image previously built by Envbuilder https://github.com/coder/envbuilder.
+  This allows re-using a previously built image pushed to a container registry without having to rebuild it.
 ---
 
 # envbuilder Provider
 
-
+The Envbuilder provider can be used to check for the presence of a container image previously built by [Envbuilder](https://github.com/coder/envbuilder).
+This allows re-using a previously built image pushed to a container registry without having to rebuild it.
 
 ## Example Usage
 
