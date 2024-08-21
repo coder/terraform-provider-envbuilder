@@ -36,8 +36,7 @@ func (p *EnvbuilderProvider) Metadata(ctx context.Context, req provider.Metadata
 func (p *EnvbuilderProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{},
-		MarkdownDescription: `# Envbuilder Provider
-
+		MarkdownDescription: `
 The Envbuilder provider can be used to check for the presence of a container image previously built by [Envbuilder](https://github.com/coder/envbuilder).
 This allows re-using a previously built image pushed to a container registry without having to rebuild it.`,
 	}
