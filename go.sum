@@ -186,8 +186,8 @@ github.com/cockroachdb/errors v1.2.4/go.mod h1:rQD95gz6FARkaKkQXUksEje/d9a6wBJoC
 github.com/cockroachdb/logtags v0.0.0-20190617123548-eb05cc24525f/go.mod h1:i/u985jwjWRlyHXQbwatDASoW0RMlZ/3i9yJHE2xLkI=
 github.com/coder/coder/v2 v2.10.1-0.20240704130443-c2d44d16a352 h1:L/EjCuZxs5tOcqqCaASj/nu65TRYEFcTt8qRQfHZXX0=
 github.com/coder/coder/v2 v2.10.1-0.20240704130443-c2d44d16a352/go.mod h1:P1KoQSgnKEAG6Mnd3YlGzAophty+yKA9VV48LpfNRvo=
-github.com/coder/envbuilder v1.0.0-rc.5.0.20240815142547-cd63d0b71a40 h1:XxZpRd+bjCAZJJHCFBVsbIrYZSYcnZBm0kp/FgfZg0o=
-github.com/coder/envbuilder v1.0.0-rc.5.0.20240815142547-cd63d0b71a40/go.mod h1:m7kjZGXpP8jAZgKwfBaMbXe0bg29ERZP3g4PMpQLR4k=
+github.com/coder/envbuilder v1.0.0-rc.0.0.20240830145058-fb7e689f39ed h1:sDEjs9qB2uJ7O85vGmzMja99IZuLvesxElOUFyy22UY=
+github.com/coder/envbuilder v1.0.0-rc.0.0.20240830145058-fb7e689f39ed/go.mod h1:LWImvtIWaX3eiAI3zyU46WE/PrE099nCut1zJultSk0=
 github.com/coder/kaniko v0.0.0-20240807142221-ffc5e60fca41 h1:1Ye7AcLnuT5IDv6il7Fxo+aqpzlWfedkpraCCwx8Lyo=
 github.com/coder/kaniko v0.0.0-20240807142221-ffc5e60fca41/go.mod h1:YMK7BlxerzLlMwihGxNWUaFoN9LXCij4P+w/8/fNlcM=
 github.com/coder/pretty v0.0.0-20230908205945-e89ba86370e0 h1:3A0ES21Ke+FxEM8CXx9n47SZOKOpgSE1bbJzlE4qPVs=
@@ -252,8 +252,8 @@ github.com/distribution/distribution/v3 v3.0.0-alpha.1 h1:jn7I1gvjOvmLztH1+1cLiU
 github.com/distribution/distribution/v3 v3.0.0-alpha.1/go.mod h1:LCp4JZp1ZalYg0W/TN05jarCQu+h4w7xc7ZfQF4Y/cY=
 github.com/distribution/reference v0.6.0 h1:0IXCQ5g4/QMHHkarYzh5l+u8T3t73zM5QvfrDyIgxBk=
 github.com/distribution/reference v0.6.0/go.mod h1:BbU0aIcezP1/5jX/8MP0YiH4SdvB5Y4f/wlDRiLyi3E=
-github.com/docker/cli v27.1.1+incompatible h1:goaZxOqs4QKxznZjjBWKONQci/MywhtRv2oNn0GkeZE=
-github.com/docker/cli v27.1.1+incompatible/go.mod h1:JLrzqnKDaYBop7H2jaqPtU4hHvMKP+vjCwu2uszcLI8=
+github.com/docker/cli v27.2.0+incompatible h1:yHD1QEB1/0vr5eBNpu8tncu8gWxg8EydFPOSKHzXSMM=
+github.com/docker/cli v27.2.0+incompatible/go.mod h1:JLrzqnKDaYBop7H2jaqPtU4hHvMKP+vjCwu2uszcLI8=
 github.com/docker/distribution v2.8.2+incompatible h1:T3de5rq0dB1j30rp0sA2rER+m322EBzniBPB6ZIzuh8=
 github.com/docker/distribution v2.8.2+incompatible/go.mod h1:J2gT2udsDAN96Uj4KfcMRqY0/ypR+oyYUYmja8H+y+w=
 github.com/docker/docker v26.1.5+incompatible h1:NEAxTwEjxV6VbBMBoGG3zPqbiJosIApZjxlbrG9q3/g=
