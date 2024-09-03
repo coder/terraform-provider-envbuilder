@@ -40,24 +40,14 @@ func TestAccCachedImageResource(t *testing.T) {
 			},
 			assertEnv: func(t *testing.T, deps testDependencies) resource.TestCheckFunc {
 				return resource.ComposeAggregateTestCheckFunc(
-					// Check that the environment variables are set correctly.
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.0", fmt.Sprintf("ENVBUILDER_CACHE_REPO=%s", deps.CacheRepo)),
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.1", fmt.Sprintf("ENVBUILDER_GIT_SSH_PRIVATE_KEY_PATH=%s", deps.Repo.Key)),
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.2", fmt.Sprintf("ENVBUILDER_GIT_URL=%s", deps.Repo.URL)),
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.3", "ENVBUILDER_REMOTE_REPO_BUILD_MODE=true"),
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.4", "ENVBUILDER_VERBOSE=true"),
-					// Check that the extra environment variables are set correctly.
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.5", "FOO=bar\nbaz"),
-					// We should not have any other environment variables set.
-					resource.TestCheckNoResourceAttr("envbuilder_cached_image.test", "env.6"),
-
-					// Check that the same values are set in env_map.
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env_map.ENVBUILDER_CACHE_REPO", deps.CacheRepo),
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env_map.ENVBUILDER_GIT_SSH_PRIVATE_KEY_PATH", deps.Repo.Key),
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env_map.ENVBUILDER_GIT_URL", deps.Repo.URL),
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env_map.ENVBUILDER_REMOTE_REPO_BUILD_MODE", "true"),
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env_map.ENVBUILDER_VERBOSE", "true"),
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env_map.FOO", "bar\nbaz"),
+					assertEnv(t,
+						"ENVBUILDER_CACHE_REPO", deps.CacheRepo,
+						"ENVBUILDER_GIT_SSH_PRIVATE_KEY_PATH", deps.Repo.Key,
+						"ENVBUILDER_GIT_URL", deps.Repo.URL,
+						"ENVBUILDER_REMOTE_REPO_BUILD_MODE", "true",
+						"ENVBUILDER_VERBOSE", "true",
+						"FOO", "bar\nbaz",
+					),
 				)
 			},
 		},
@@ -78,24 +68,14 @@ RUN date > /date.txt`,
 			},
 			assertEnv: func(t *testing.T, deps testDependencies) resource.TestCheckFunc {
 				return resource.ComposeAggregateTestCheckFunc(
-					// Check that the environment variables are set correctly.
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.0", fmt.Sprintf("ENVBUILDER_CACHE_REPO=%s", deps.CacheRepo)),
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.1", fmt.Sprintf("ENVBUILDER_GIT_SSH_PRIVATE_KEY_PATH=%s", deps.Repo.Key)),
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.2", fmt.Sprintf("ENVBUILDER_GIT_URL=%s", deps.Repo.URL)),
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.3", "ENVBUILDER_REMOTE_REPO_BUILD_MODE=true"),
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.4", "ENVBUILDER_VERBOSE=true"),
-					// Check that the extra environment variables are set correctly.
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.5", "FOO=bar\nbaz"),
-					// We should not have any other environment variables set.
-					resource.TestCheckNoResourceAttr("envbuilder_cached_image.test", "env.6"),
-
-					// Check that the same values are set in env_map.
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env_map.ENVBUILDER_CACHE_REPO", deps.CacheRepo),
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env_map.ENVBUILDER_GIT_SSH_PRIVATE_KEY_PATH", deps.Repo.Key),
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env_map.ENVBUILDER_GIT_URL", deps.Repo.URL),
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env_map.ENVBUILDER_REMOTE_REPO_BUILD_MODE", "true"),
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env_map.ENVBUILDER_VERBOSE", "true"),
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env_map.FOO", "bar\nbaz"),
+					assertEnv(t,
+						"ENVBUILDER_CACHE_REPO", deps.CacheRepo,
+						"ENVBUILDER_GIT_SSH_PRIVATE_KEY_PATH", deps.Repo.Key,
+						"ENVBUILDER_GIT_URL", deps.Repo.URL,
+						"ENVBUILDER_REMOTE_REPO_BUILD_MODE", "true",
+						"ENVBUILDER_VERBOSE", "true",
+						"FOO", "bar\nbaz",
+					),
 				)
 			},
 		},
@@ -118,30 +98,17 @@ RUN date > /date.txt`,
 			},
 			assertEnv: func(t *testing.T, deps testDependencies) resource.TestCheckFunc {
 				return resource.ComposeAggregateTestCheckFunc(
-					// Check that the environment variables are set correctly.
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.0", fmt.Sprintf("ENVBUILDER_CACHE_REPO=%s", deps.CacheRepo)),
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.1", fmt.Sprintf("ENVBUILDER_DEVCONTAINER_DIR=%s", deps.ExtraEnv["ENVBUILDER_DEVCONTAINER_DIR"])),
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.2", fmt.Sprintf("ENVBUILDER_DEVCONTAINER_JSON_PATH=%s", deps.ExtraEnv["ENVBUILDER_DEVCONTAINER_JSON_PATH"])),
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.3", fmt.Sprintf("ENVBUILDER_DOCKERFILE_PATH=%s", deps.ExtraEnv["ENVBUILDER_DOCKERFILE_PATH"])),
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.4", fmt.Sprintf("ENVBUILDER_GIT_SSH_PRIVATE_KEY_PATH=%s", deps.Repo.Key)),
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.5", fmt.Sprintf("ENVBUILDER_GIT_URL=%s", deps.Repo.URL)),
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.6", "ENVBUILDER_REMOTE_REPO_BUILD_MODE=true"),
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.7", "ENVBUILDER_VERBOSE=true"),
-					// Check that the extra environment variables are set correctly.
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.8", "FOO=bar\nbaz"),
-					// We should not have any other environment variables set.
-					resource.TestCheckNoResourceAttr("envbuilder_cached_image.test", "env.9"),
-
-					// Check that the same values are set in env_map.
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env_map.ENVBUILDER_CACHE_REPO", deps.CacheRepo),
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env_map.ENVBUILDER_DEVCONTAINER_DIR", deps.ExtraEnv["ENVBUILDER_DEVCONTAINER_DIR"]),
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env_map.ENVBUILDER_DEVCONTAINER_JSON_PATH", deps.ExtraEnv["ENVBUILDER_DEVCONTAINER_JSON_PATH"]),
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env_map.ENVBUILDER_DOCKERFILE_PATH", deps.ExtraEnv["ENVBUILDER_DOCKERFILE_PATH"]),
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env_map.ENVBUILDER_GIT_SSH_PRIVATE_KEY_PATH", deps.Repo.Key),
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env_map.ENVBUILDER_GIT_URL", deps.Repo.URL),
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env_map.ENVBUILDER_REMOTE_REPO_BUILD_MODE", "true"),
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env_map.ENVBUILDER_VERBOSE", "true"),
-					resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env_map.FOO", "bar\nbaz"),
+					assertEnv(t,
+						"ENVBUILDER_CACHE_REPO", deps.CacheRepo,
+						"ENVBUILDER_DEVCONTAINER_DIR", "path/to/.devcontainer",
+						"ENVBUILDER_DEVCONTAINER_JSON_PATH", "path/to/.devcontainer/devcontainer.json",
+						"ENVBUILDER_DOCKERFILE_PATH", "path/to/.devcontainer/Dockerfile",
+						"ENVBUILDER_GIT_SSH_PRIVATE_KEY_PATH", deps.Repo.Key,
+						"ENVBUILDER_GIT_URL", deps.Repo.URL,
+						"ENVBUILDER_REMOTE_REPO_BUILD_MODE", "true",
+						"ENVBUILDER_VERBOSE", "true",
+						"FOO", "bar\nbaz",
+					),
 				)
 			},
 		},
@@ -170,7 +137,6 @@ RUN date > /date.txt`,
 							resource.TestCheckResourceAttr("envbuilder_cached_image.test", "image", deps.BuilderImage),
 							// Inputs should still be present.
 							resource.TestCheckResourceAttr("envbuilder_cached_image.test", "cache_repo", deps.CacheRepo),
-							resource.TestCheckResourceAttr("envbuilder_cached_image.test", "extra_env.FOO", "bar\nbaz"),
 							resource.TestCheckResourceAttr("envbuilder_cached_image.test", "git_url", deps.Repo.URL),
 							// Should be empty
 							resource.TestCheckNoResourceAttr("envbuilder_cached_image.test", "git_username"),
@@ -192,7 +158,6 @@ RUN date > /date.txt`,
 							resource.TestCheckResourceAttr("envbuilder_cached_image.test", "image", deps.BuilderImage),
 							// Inputs should still be present.
 							resource.TestCheckResourceAttr("envbuilder_cached_image.test", "cache_repo", deps.CacheRepo),
-							resource.TestCheckResourceAttr("envbuilder_cached_image.test", "extra_env.FOO", "bar\nbaz"),
 							resource.TestCheckResourceAttr("envbuilder_cached_image.test", "git_url", deps.Repo.URL),
 							// Should be empty
 							resource.TestCheckNoResourceAttr("envbuilder_cached_image.test", "git_username"),
@@ -212,7 +177,6 @@ RUN date > /date.txt`,
 						Check: resource.ComposeAggregateTestCheckFunc(
 							// Inputs should still be present.
 							resource.TestCheckResourceAttr("envbuilder_cached_image.test", "cache_repo", deps.CacheRepo),
-							resource.TestCheckResourceAttr("envbuilder_cached_image.test", "extra_env.FOO", "bar\nbaz"),
 							resource.TestCheckResourceAttr("envbuilder_cached_image.test", "git_url", deps.Repo.URL),
 							// Should be empty
 							resource.TestCheckNoResourceAttr("envbuilder_cached_image.test", "git_username"),
@@ -243,28 +207,31 @@ RUN date > /date.txt`,
 	}
 }
 
-// assertEnv is a test helper that checks the environment variables set on the
-// cached image resource based on the provided test dependencies.
-func assertEnv(t *testing.T, deps testDependencies) resource.TestCheckFunc {
+// assertEnv is a test helper that checks the environment variables, in order,
+// on both the env and env_map attributes of the cached image resource.
+func assertEnv(t *testing.T, kvs ...string) resource.TestCheckFunc {
 	t.Helper()
-	return resource.ComposeAggregateTestCheckFunc(
-		// Check that the environment variables are set correctly.
-		resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.0", fmt.Sprintf("ENVBUILDER_CACHE_REPO=%s", deps.CacheRepo)),
-		resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.1", fmt.Sprintf("ENVBUILDER_GIT_SSH_PRIVATE_KEY_PATH=%s", deps.Repo.Key)),
-		resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.2", fmt.Sprintf("ENVBUILDER_GIT_URL=%s", deps.Repo.URL)),
-		resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.3", "ENVBUILDER_REMOTE_REPO_BUILD_MODE=true"),
-		resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.4", "ENVBUILDER_VERBOSE=true"),
-		// Check that the extra environment variables are set correctly.
-		resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env.5", "FOO=bar\nbaz"),
-		// We should not have any other environment variables set.
-		resource.TestCheckNoResourceAttr("envbuilder_cached_image.test", "env.6"),
+	if len(kvs)%2 != 0 {
+		t.Fatalf("assertEnv: expected an even number of key-value pairs, got %d", len(kvs))
+	}
 
-		// Check that the same values are set in env_map.
-		resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env_map.ENVBUILDER_CACHE_REPO", deps.CacheRepo),
-		resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env_map.ENVBUILDER_GIT_SSH_PRIVATE_KEY_PATH", deps.Repo.Key),
-		resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env_map.ENVBUILDER_GIT_URL", deps.Repo.URL),
-		resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env_map.ENVBUILDER_REMOTE_REPO_BUILD_MODE", "true"),
-		resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env_map.ENVBUILDER_VERBOSE", "true"),
-		resource.TestCheckResourceAttr("envbuilder_cached_image.test", "env_map.FOO", "bar\nbaz"),
-	)
+	funcs := make([]resource.TestCheckFunc, 0)
+	for i := 0; i < len(kvs); i += 2 {
+		resKey := fmt.Sprintf("env.%d", len(funcs))
+		resVal := fmt.Sprintf("%s=%s", kvs[i], kvs[i+1])
+		fn := resource.TestCheckResourceAttr("envbuilder_cached_image.test", resKey, resVal)
+		funcs = append(funcs, fn)
+	}
+
+	lastKey := fmt.Sprintf("env.%d", len(funcs))
+	lastFn := resource.TestCheckNoResourceAttr("envbuilder_cached_image.test", lastKey)
+	funcs = append(funcs, lastFn)
+
+	for i := 0; i < len(kvs); i += 2 {
+		resKey := fmt.Sprintf("env_map.%s", kvs[i])
+		fn := resource.TestCheckResourceAttr("envbuilder_cached_image.test", resKey, kvs[i+1])
+		funcs = append(funcs, fn)
+	}
+
+	return resource.ComposeAggregateTestCheckFunc(funcs...)
 }
