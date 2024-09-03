@@ -71,7 +71,7 @@ func quote(s string) string {
 	return fmt.Sprintf("%q", s)
 }
 
-func setup(ctx context.Context, t testing.TB, files map[string]string) testDependencies {
+func setup(ctx context.Context, t testing.TB, extraEnv, files map[string]string) testDependencies {
 	t.Helper()
 
 	envbuilderImage := getEnvOrDefault("ENVBUILDER_IMAGE", "localhost:5000/envbuilder")
@@ -89,7 +89,7 @@ func setup(ctx context.Context, t testing.TB, files map[string]string) testDepen
 	return testDependencies{
 		BuilderImage: envbuilderImageRef,
 		CacheRepo:    reg + "/test",
-		ExtraEnv:     make(map[string]string),
+		ExtraEnv:     extraEnv,
 		Repo:         gitRepo,
 	}
 }
@@ -106,18 +106,38 @@ func seedCache(ctx context.Context, t testing.TB, deps testDependencies) {
 
 	ensureImage(ctx, t, cli, deps.BuilderImage)
 
+	// Set up env for envbuilder
+	seedEnv := map[string]string{
+		"ENVBUILDER_CACHE_REPO":               deps.CacheRepo,
+		"ENVBUILDER_EXIT_ON_BUILD_FAILURE":    "true",
+		"ENVBUILDER_INIT_SCRIPT":              "exit",
+		"ENVBUILDER_PUSH_IMAGE":               "true",
+		"ENVBUILDER_VERBOSE":                  "true",
+		"ENVBUILDER_GIT_URL":                  deps.Repo.URL,
+		"ENVBUILDER_GIT_SSH_PRIVATE_KEY_PATH": "/id_ed25519",
+	}
+
+	for k, v := range deps.ExtraEnv {
+		if !strings.HasPrefix(k, "ENVBUILDER_") {
+			continue
+		}
+		if _, ok := seedEnv[k]; ok {
+			continue
+		}
+		seedEnv[k] = v
+	}
+
+	seedDockerEnv := make([]string, 0)
+	for k, v := range seedEnv {
+		seedDockerEnv = append(seedDockerEnv, k+"="+v)
+	}
+
+	t.Logf("running envbuilder to seed cache with args: %v", seedDockerEnv)
+
 	// Run envbuilder using this dir as a local layer cache
 	ctr, err := cli.ContainerCreate(ctx, &container.Config{
 		Image: deps.BuilderImage,
-		Env: []string{
-			"ENVBUILDER_CACHE_REPO=" + deps.CacheRepo,
-			"ENVBUILDER_EXIT_ON_BUILD_FAILURE=true",
-			"ENVBUILDER_INIT_SCRIPT=exit",
-			"ENVBUILDER_PUSH_IMAGE=true",
-			"ENVBUILDER_VERBOSE=true",
-			"ENVBUILDER_GIT_URL=" + deps.Repo.URL,
-			"ENVBUILDER_GIT_SSH_PRIVATE_KEY_PATH=/id_ed25519",
-		},
+		Env:   seedDockerEnv,
 		Labels: map[string]string{
 			testContainerLabel: "true",
 		},
