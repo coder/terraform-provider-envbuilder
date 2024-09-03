@@ -49,14 +49,14 @@ func (d *testDependencies) Config(t testing.TB) string {
 resource "envbuilder_cached_image" "test" {
   builder_image            = {{ quote .BuilderImage }}
 	cache_repo               = {{ quote .CacheRepo }}
+	git_url                  = {{ quote .Repo.URL }}
 	extra_env                = {
+		"ENVBUILDER_GIT_SSH_PRIVATE_KEY_PATH": {{ quote .Repo.Key }}
+		"ENVBUILDER_VERBOSE": true
 	{{ range $k, $v := .ExtraEnv }}
 		{{ quote $k }}: {{ quote $v }}
 	{{ end }}
 	}
-	git_url                  = {{ quote .Repo.URL }}
-	git_ssh_private_key_path = {{ quote .Repo.Key }}
-	verbose                  = true
 }`
 
 	fm := template.FuncMap{"quote": quote}
