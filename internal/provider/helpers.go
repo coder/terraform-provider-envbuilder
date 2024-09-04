@@ -17,9 +17,9 @@ const (
 )
 
 // nonOverrideOptions are options that cannot be overridden by extra_env.
-var nonOverrideOptions = map[string]struct{}{
-	"ENVBUILDER_CACHE_REPO": {},
-	"ENVBUILDER_GIT_URL":    {},
+var nonOverrideOptions = map[string]bool{
+	"ENVBUILDER_CACHE_REPO": true,
+	"ENVBUILDER_GIT_URL":    true,
 }
 
 // optionsFromDataModel converts a CachedImageResourceModel into a corresponding set of
@@ -33,113 +33,114 @@ func optionsFromDataModel(data CachedImageResourceModel) (eboptions.Options, dia
 	opts.GitURL = data.GitURL.ValueString()
 
 	// Other options can be overridden by extra_env, with a warning.
-	// Keep track of which options are overridden.
-	overrides := make(map[string]struct{})
+	// Keep track of which options are set from the data model so we
+	// can check if they are being overridden.
+	providerOpts := make(map[string]bool)
 
 	if !data.BaseImageCacheDir.IsNull() {
-		overrides["ENVBUILDER_BASE_IMAGE_CACHE_DIR"] = struct{}{}
+		providerOpts["ENVBUILDER_BASE_IMAGE_CACHE_DIR"] = true
 		opts.BaseImageCacheDir = data.BaseImageCacheDir.ValueString()
 	}
 
 	if !data.BuildContextPath.IsNull() {
-		overrides["ENVBUILDER_BUILD_CONTEXT_PATH"] = struct{}{}
+		providerOpts["ENVBUILDER_BUILD_CONTEXT_PATH"] = true
 		opts.BuildContextPath = data.BuildContextPath.ValueString()
 	}
 
 	if !data.CacheTTLDays.IsNull() {
-		overrides["ENVBUILDER_CACHE_TTL_DAYS"] = struct{}{}
+		providerOpts["ENVBUILDER_CACHE_TTL_DAYS"] = true
 		opts.CacheTTLDays = data.CacheTTLDays.ValueInt64()
 	}
 
 	if !data.DevcontainerDir.IsNull() {
-		overrides["ENVBUILDER_DEVCONTAINER_DIR"] = struct{}{}
+		providerOpts["ENVBUILDER_DEVCONTAINER_DIR"] = true
 		opts.DevcontainerDir = data.DevcontainerDir.ValueString()
 	}
 
 	if !data.DevcontainerJSONPath.IsNull() {
-		overrides["ENVBUILDER_DEVCONTAINER_JSON_PATH"] = struct{}{}
+		providerOpts["ENVBUILDER_DEVCONTAINER_JSON_PATH"] = true
 		opts.DevcontainerJSONPath = data.DevcontainerJSONPath.ValueString()
 	}
 
 	if !data.DockerfilePath.IsNull() {
-		overrides["ENVBUILDER_DOCKERFILE_PATH"] = struct{}{}
+		providerOpts["ENVBUILDER_DOCKERFILE_PATH"] = true
 		opts.DockerfilePath = data.DockerfilePath.ValueString()
 	}
 
 	if !data.DockerConfigBase64.IsNull() {
-		overrides["ENVBUILDER_DOCKER_CONFIG_BASE64"] = struct{}{}
+		providerOpts["ENVBUILDER_DOCKER_CONFIG_BASE64"] = true
 		opts.DockerConfigBase64 = data.DockerConfigBase64.ValueString()
 	}
 
 	if !data.ExitOnBuildFailure.IsNull() {
-		overrides["ENVBUILDER_EXIT_ON_BUILD_FAILURE"] = struct{}{}
+		providerOpts["ENVBUILDER_EXIT_ON_BUILD_FAILURE"] = true
 		opts.ExitOnBuildFailure = data.ExitOnBuildFailure.ValueBool()
 	}
 
 	if !data.FallbackImage.IsNull() {
-		overrides["ENVBUILDER_FALLBACK_IMAGE"] = struct{}{}
+		providerOpts["ENVBUILDER_FALLBACK_IMAGE"] = true
 		opts.FallbackImage = data.FallbackImage.ValueString()
 	}
 
 	if !data.GitCloneDepth.IsNull() {
-		overrides["ENVBUILDER_GIT_CLONE_DEPTH"] = struct{}{}
+		providerOpts["ENVBUILDER_GIT_CLONE_DEPTH"] = true
 		opts.GitCloneDepth = data.GitCloneDepth.ValueInt64()
 	}
 
 	if !data.GitCloneSingleBranch.IsNull() {
-		overrides["ENVBUILDER_GIT_CLONE_SINGLE_BRANCH"] = struct{}{}
+		providerOpts["ENVBUILDER_GIT_CLONE_SINGLE_BRANCH"] = true
 		opts.GitCloneSingleBranch = data.GitCloneSingleBranch.ValueBool()
 	}
 
 	if !data.GitHTTPProxyURL.IsNull() {
-		overrides["ENVBUILDER_GIT_HTTP_PROXY_URL"] = struct{}{}
+		providerOpts["ENVBUILDER_GIT_HTTP_PROXY_URL"] = true
 		opts.GitHTTPProxyURL = data.GitHTTPProxyURL.ValueString()
 	}
 
 	if !data.GitSSHPrivateKeyPath.IsNull() {
-		overrides["ENVBUILDER_GIT_SSH_PRIVATE_KEY_PATH"] = struct{}{}
+		providerOpts["ENVBUILDER_GIT_SSH_PRIVATE_KEY_PATH"] = true
 		opts.GitSSHPrivateKeyPath = data.GitSSHPrivateKeyPath.ValueString()
 	}
 
 	if !data.GitUsername.IsNull() {
-		overrides["ENVBUILDER_GIT_USERNAME"] = struct{}{}
+		providerOpts["ENVBUILDER_GIT_USERNAME"] = true
 		opts.GitUsername = data.GitUsername.ValueString()
 	}
 
 	if !data.GitPassword.IsNull() {
-		overrides["ENVBUILDER_GIT_PASSWORD"] = struct{}{}
+		providerOpts["ENVBUILDER_GIT_PASSWORD"] = true
 		opts.GitPassword = data.GitPassword.ValueString()
 	}
 
 	if !data.IgnorePaths.IsNull() {
-		overrides["ENVBUILDER_IGNORE_PATHS"] = struct{}{}
+		providerOpts["ENVBUILDER_IGNORE_PATHS"] = true
 		opts.IgnorePaths = tfutil.TFListToStringSlice(data.IgnorePaths)
 	}
 
 	if !data.Insecure.IsNull() {
-		overrides["ENVBUILDER_INSECURE"] = struct{}{}
+		providerOpts["ENVBUILDER_INSECURE"] = true
 		opts.Insecure = data.Insecure.ValueBool()
 	}
 
 	if data.RemoteRepoBuildMode.IsNull() {
 		opts.RemoteRepoBuildMode = true
 	} else {
-		overrides["ENVBUILDER_REMOTE_REPO_BUILD_MODE"] = struct{}{}
+		providerOpts["ENVBUILDER_REMOTE_REPO_BUILD_MODE"] = true
 		opts.RemoteRepoBuildMode = data.RemoteRepoBuildMode.ValueBool()
 	}
 
 	if !data.SSLCertBase64.IsNull() {
-		overrides["ENVBUILDER_SSL_CERT_BASE64"] = struct{}{}
+		providerOpts["ENVBUILDER_SSL_CERT_BASE64"] = true
 		opts.SSLCertBase64 = data.SSLCertBase64.ValueString()
 	}
 
 	if !data.Verbose.IsNull() {
-		overrides["ENVBUILDER_VERBOSE"] = struct{}{}
+		providerOpts["ENVBUILDER_VERBOSE"] = true
 		opts.Verbose = data.Verbose.ValueBool()
 	}
 
 	if !data.WorkspaceFolder.IsNull() {
-		overrides["ENVBUILDER_WORKSPACE_FOLDER"] = struct{}{}
+		providerOpts["ENVBUILDER_WORKSPACE_FOLDER"] = true
 		opts.WorkspaceFolder = data.WorkspaceFolder.ValueString()
 	}
 
@@ -148,7 +149,7 @@ func optionsFromDataModel(data CachedImageResourceModel) (eboptions.Options, dia
 	for k, v := range data.ExtraEnv.Elements() {
 		extraEnv[k] = tfutil.TFValueToString(v)
 	}
-	diags = append(diags, overrideOptionsFromExtraEnv(&opts, extraEnv, overrides)...)
+	diags = append(diags, overrideOptionsFromExtraEnv(&opts, extraEnv, providerOpts)...)
 
 	return opts, diags
 }
@@ -156,7 +157,7 @@ func optionsFromDataModel(data CachedImageResourceModel) (eboptions.Options, dia
 // overrideOptionsFromExtraEnv overrides the options in opts with values from extraEnv.
 // It returns any diagnostics encountered.
 // It will not override certain options, such as ENVBUILDER_CACHE_REPO and ENVBUILDER_GIT_URL.
-func overrideOptionsFromExtraEnv(opts *eboptions.Options, extraEnv map[string]string, overrides map[string]struct{}) diag.Diagnostics {
+func overrideOptionsFromExtraEnv(opts *eboptions.Options, extraEnv map[string]string, providerOpts map[string]bool) diag.Diagnostics {
 	var diags diag.Diagnostics
 	// Make a map of the options for easy lookup.
 	optsMap := make(map[string]pflag.Value)
@@ -170,7 +171,7 @@ func overrideOptionsFromExtraEnv(opts *eboptions.Options, extraEnv map[string]st
 			continue
 		}
 
-		if _, found := nonOverrideOptions[key]; found {
+		if nonOverrideOptions[key] {
 			diags.AddAttributeWarning(path.Root("extra_env"),
 				"Cannot override required environment variable",
 				fmt.Sprintf("The key %q in extra_env cannot be overridden.", key),
@@ -179,7 +180,7 @@ func overrideOptionsFromExtraEnv(opts *eboptions.Options, extraEnv map[string]st
 		}
 
 		// Check if the option was set on the provider data model and generate a warning if so.
-		if _, overridden := overrides[key]; overridden {
+		if providerOpts[key] {
 			diags.AddAttributeWarning(path.Root("extra_env"),
 				"Overriding provider environment variable",
 				fmt.Sprintf("The key %q in extra_env overrides an option set on the provider.", key),
