@@ -208,12 +208,10 @@ func overrideOptionsFromExtraEnv(opts *eboptions.Options, extraEnv map[string]st
 // It will not set certain options, such as ENVBUILDER_CACHE_REPO and ENVBUILDER_GIT_URL.
 // It will also not handle legacy Envbuilder options (i.e. those not prefixed with ENVBUILDER_).
 func computeEnvFromOptions(opts eboptions.Options, extraEnv map[string]string) map[string]string {
-	allEnvKeys := make(map[string]struct{})
 	for _, opt := range opts.CLI() {
 		if opt.Env == "" {
 			continue
 		}
-		allEnvKeys[opt.Env] = struct{}{}
 	}
 
 	computed := make(map[string]string)
