@@ -118,7 +118,7 @@ func seedCache(ctx context.Context, t testing.TB, deps testDependencies) {
 	}
 
 	for k, v := range deps.ExtraEnv {
-		if !strings.HasPrefix(k, "ENVBUILDER_") {
+		if !strings.HasPrefix(k, envbuilderOptionPrefix) {
 			continue
 		}
 		if _, ok := seedEnv[k]; ok {

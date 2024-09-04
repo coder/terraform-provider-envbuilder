@@ -12,6 +12,16 @@ import (
 	"github.com/spf13/pflag"
 )
 
+const (
+	envbuilderOptionPrefix = "ENVBUILDER_"
+)
+
+// nonOverrideOptions are options that cannot be overridden by extra_env.
+var nonOverrideOptions = map[string]struct{}{
+	"ENVBUILDER_CACHE_REPO": {},
+	"ENVBUILDER_GIT_URL":    {},
+}
+
 // optionsFromDataModel converts a CachedImageResourceModel into a corresponding set of
 // Envbuilder options. It returns the options and any diagnostics encountered.
 func optionsFromDataModel(data CachedImageResourceModel) (eboptions.Options, diag.Diagnostics) {
@@ -154,43 +164,39 @@ func overrideOptionsFromExtraEnv(opts *eboptions.Options, extraEnv map[string]st
 		optsMap[opt.Env] = opt.Value
 	}
 	for key, val := range extraEnv {
-		switch key {
-
-		// These options may not be overridden.
-		case "ENVBUILDER_CACHE_REPO", "ENVBUILDER_GIT_URL":
+		if _, found := nonOverrideOptions[key]; found {
 			diags.AddAttributeWarning(path.Root("extra_env"),
 				"Cannot override required environment variable",
 				fmt.Sprintf("The key %q in extra_env cannot be overridden.", key),
 			)
 			continue
+		}
 
-		default:
-			// Check if the option was set on the provider data model and generate a warning if so.
-			if _, overridden := overrides[key]; overridden {
-				diags.AddAttributeWarning(path.Root("extra_env"),
-					"Overriding provider environment variable",
-					fmt.Sprintf("The key %q in extra_env overrides an option set on the provider.", key),
-				)
-			}
+		// Check if the option was set on the provider data model and generate a warning if so.
+		if _, overridden := overrides[key]; overridden {
+			diags.AddAttributeWarning(path.Root("extra_env"),
+				"Overriding provider environment variable",
+				fmt.Sprintf("The key %q in extra_env overrides an option set on the provider.", key),
+			)
+		}
 
-			// XXX: workaround for serpent behaviour where calling Set() on a
-			// string slice will append instead of replace: set to empty first.
-			if key == "ENVBUILDER_IGNORE_PATHS" {
-				_ = optsMap[key].Set("")
-			}
+		// XXX: workaround for serpent behaviour where calling Set() on a
+		// string slice will append instead of replace: set to empty first.
+		if key == "ENVBUILDER_IGNORE_PATHS" {
+			_ = optsMap[key].Set("")
+		}
 
-			opt, found := optsMap[key]
-			if !found {
-				// ignore unknown keys
-				continue
-			}
+		opt, found := optsMap[key]
+		if !found {
+			// ignore unknown keys
+			continue
+		}
 
-			if err := opt.Set(val); err != nil {
-				diags.AddAttributeError(path.Root("extra_env"),
-					"Invalid value for environment variable",
-					fmt.Sprintf("The key %q in extra_env has an invalid value: %s", key, err),
-				)
-			}
+		if err := opt.Set(val); err != nil {
+			diags.AddAttributeError(path.Root("extra_env"),
+				"Invalid value for environment variable",
+				fmt.Sprintf("The key %q in extra_env has an invalid value: %s", key, err),
+			)
 		}
 	}
 	return diags
@@ -210,26 +216,17 @@ func computeEnvFromOptions(opts eboptions.Options, extraEnv map[string]string) m
 		allEnvKeys[opt.Env] = struct{}{}
 	}
 
-	// Only set the environment variables from opts that are not legacy options.
-	// Legacy options are those that are not prefixed with ENVBUILDER_.
-	// While we can detect when a legacy option is set, overriding it becomes
-	// problematic. Erring on the side of caution, we will not override legacy options.
-	isEnvbuilderOption := func(key string) bool {
-		switch key {
-		case "CODER_AGENT_URL", "CODER_AGENT_TOKEN", "CODER_AGENT_SUBSYSTEM":
-			return true // kinda
-		default:
-			return strings.HasPrefix(key, "ENVBUILDER_")
-		}
-	}
-
 	computed := make(map[string]string)
 	for _, opt := range opts.CLI() {
 		if opt.Env == "" {
 			continue
 		}
 		// TODO: remove this check once support for legacy options is removed.
-		if !isEnvbuilderOption(opt.Env) {
+		// Only set the environment variables from opts that are not legacy options.
+		// Legacy options are those that are not prefixed with ENVBUILDER_.
+		// While we can detect when a legacy option is set, overriding it becomes
+		// problematic. Erring on the side of caution, we will not override legacy options.
+		if !strings.HasPrefix(opt.Env, envbuilderOptionPrefix) {
 			continue
 		}
 		var val string
@@ -250,7 +247,7 @@ func computeEnvFromOptions(opts eboptions.Options, extraEnv map[string]string) m
 	// Merge in extraEnv, which may override values from opts.
 	// Skip any keys that are envbuilder options.
 	for key, val := range extraEnv {
-		if isEnvbuilderOption(key) {
+		if strings.HasPrefix(key, envbuilderOptionPrefix) {
 			continue
 		}
 		computed[key] = val
