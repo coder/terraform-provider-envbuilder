@@ -164,6 +164,12 @@ func overrideOptionsFromExtraEnv(opts *eboptions.Options, extraEnv map[string]st
 		optsMap[opt.Env] = opt.Value
 	}
 	for key, val := range extraEnv {
+		opt, found := optsMap[key]
+		if !found {
+			// ignore unknown keys
+			continue
+		}
+
 		if _, found := nonOverrideOptions[key]; found {
 			diags.AddAttributeWarning(path.Root("extra_env"),
 				"Cannot override required environment variable",
@@ -184,12 +190,6 @@ func overrideOptionsFromExtraEnv(opts *eboptions.Options, extraEnv map[string]st
 		// string slice will append instead of replace: set to empty first.
 		if key == "ENVBUILDER_IGNORE_PATHS" {
 			_ = optsMap[key].Set("")
-		}
-
-		opt, found := optsMap[key]
-		if !found {
-			// ignore unknown keys
-			continue
 		}
 
 		if err := opt.Set(val); err != nil {
