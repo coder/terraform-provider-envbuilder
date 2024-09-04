@@ -35,9 +35,10 @@ func TFValueToString(val attr.Value) string {
 // TFListToStringSlice converts a types.List to a []string by calling
 // tfValueToString on each element.
 func TFListToStringSlice(l types.List) []string {
-	var ss []string
-	for _, el := range l.Elements() {
-		ss = append(ss, TFValueToString(el))
+	els := l.Elements()
+	ss := make([]string, len(els))
+	for idx, el := range els {
+		ss[idx] = TFValueToString(el)
 	}
 	return ss
 }
@@ -45,8 +46,9 @@ func TFListToStringSlice(l types.List) []string {
 // TFMapToStringMap converts a types.Map to a map[string]string by calling
 // tfValueToString on each element.
 func TFMapToStringMap(m types.Map) map[string]string {
-	res := make(map[string]string)
-	for k, v := range m.Elements() {
+	els := m.Elements()
+	res := make(map[string]string, len(els))
+	for k, v := range els {
 		res[k] = TFValueToString(v)
 	}
 	return res
