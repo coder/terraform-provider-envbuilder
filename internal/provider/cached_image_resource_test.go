@@ -34,13 +34,17 @@ func TestAccCachedImageResource(t *testing.T) {
 				".devcontainer/devcontainer.json": `{"image": "localhost:5000/test-ubuntu:latest"}`,
 			},
 			extraEnv: map[string]string{
-				"FOO":                   testEnvValue,
+				"CODER_AGENT_TOKEN":     "some-token",
+				"CODER_AGENT_URL":       "https://coder.example.com",
 				"ENVBUILDER_GIT_URL":    "https://not.the.real.git/url",
 				"ENVBUILDER_CACHE_REPO": "not-the-real-cache-repo",
+				"FOO":                   testEnvValue,
 			},
 			assertEnv: func(t *testing.T, deps testDependencies) resource.TestCheckFunc {
 				return resource.ComposeAggregateTestCheckFunc(
 					assertEnv(t,
+						"CODER_AGENT_TOKEN", "some-token",
+						"CODER_AGENT_URL", "https://coder.example.com",
 						"ENVBUILDER_CACHE_REPO", deps.CacheRepo,
 						"ENVBUILDER_GIT_SSH_PRIVATE_KEY_PATH", deps.Repo.Key,
 						"ENVBUILDER_GIT_URL", deps.Repo.URL,
@@ -62,6 +66,8 @@ func TestAccCachedImageResource(t *testing.T) {
 RUN date > /date.txt`,
 			},
 			extraEnv: map[string]string{
+				"CODER_AGENT_TOKEN":     "some-token",
+				"CODER_AGENT_URL":       "https://coder.example.com",
 				"FOO":                   testEnvValue,
 				"ENVBUILDER_GIT_URL":    "https://not.the.real.git/url",
 				"ENVBUILDER_CACHE_REPO": "not-the-real-cache-repo",
@@ -69,6 +75,8 @@ RUN date > /date.txt`,
 			assertEnv: func(t *testing.T, deps testDependencies) resource.TestCheckFunc {
 				return resource.ComposeAggregateTestCheckFunc(
 					assertEnv(t,
+						"CODER_AGENT_TOKEN", "some-token",
+						"CODER_AGENT_URL", "https://coder.example.com",
 						"ENVBUILDER_CACHE_REPO", deps.CacheRepo,
 						"ENVBUILDER_GIT_SSH_PRIVATE_KEY_PATH", deps.Repo.Key,
 						"ENVBUILDER_GIT_URL", deps.Repo.URL,
@@ -89,6 +97,8 @@ RUN date > /date.txt`,
 		RUN date > /date.txt`,
 			},
 			extraEnv: map[string]string{
+				"CODER_AGENT_TOKEN":                 "some-token",
+				"CODER_AGENT_URL":                   "https://coder.example.com",
 				"FOO":                               testEnvValue,
 				"ENVBUILDER_GIT_URL":                "https://not.the.real.git/url",
 				"ENVBUILDER_CACHE_REPO":             "not-the-real-cache-repo",
@@ -99,6 +109,8 @@ RUN date > /date.txt`,
 			assertEnv: func(t *testing.T, deps testDependencies) resource.TestCheckFunc {
 				return resource.ComposeAggregateTestCheckFunc(
 					assertEnv(t,
+						"CODER_AGENT_TOKEN", "some-token",
+						"CODER_AGENT_URL", "https://coder.example.com",
 						"ENVBUILDER_CACHE_REPO", deps.CacheRepo,
 						"ENVBUILDER_DEVCONTAINER_DIR", "path/to/.devcontainer",
 						"ENVBUILDER_DEVCONTAINER_JSON_PATH", "path/to/.devcontainer/devcontainer.json",
