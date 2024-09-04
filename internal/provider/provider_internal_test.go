@@ -284,9 +284,6 @@ func Test_computeEnvFromOptions(t *testing.T) {
 				"FOO":                  "bar",    // should be included
 			},
 			expectEnv: map[string]string{
-				"CODER_AGENT_SUBSYSTEM":               "one,two",
-				"CODER_AGENT_TOKEN":                   "string",
-				"CODER_AGENT_URL":                     "string",
 				"ENVBUILDER_BASE_IMAGE_CACHE_DIR":     "string",
 				"ENVBUILDER_BINARY_PATH":              "string",
 				"ENVBUILDER_BUILD_CONTEXT_PATH":       "string",

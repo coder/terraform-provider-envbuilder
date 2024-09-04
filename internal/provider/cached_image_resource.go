@@ -1,33 +1,24 @@
 package provider
 
 import (
-	"archive/tar"
 	"context"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	kconfig "github.com/GoogleContainerTools/kaniko/pkg/config"
 	"github.com/coder/envbuilder"
 	"github.com/coder/envbuilder/constants"
-	eblog "github.com/coder/envbuilder/log"
 	eboptions "github.com/coder/envbuilder/options"
-	"github.com/coder/serpent"
+	"github.com/coder/terraform-provider-envbuilder/internal/imgutil"
+	"github.com/coder/terraform-provider-envbuilder/internal/tfutil"
 	"github.com/go-git/go-billy/v5/osfs"
-	"github.com/google/go-containerregistry/pkg/authn"
-	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
-	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/google/uuid"
-	"github.com/spf13/pflag"
 
-	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
@@ -295,249 +286,13 @@ func (r *CachedImageResource) Configure(ctx context.Context, req resource.Config
 	r.client = client
 }
 
-func optionsFromDataModel(data CachedImageResourceModel) (eboptions.Options, diag.Diagnostics) {
-	var diags diag.Diagnostics
-	var opts eboptions.Options
-
-	// Required options. Cannot be overridden by extra_env.
-	opts.CacheRepo = data.CacheRepo.ValueString()
-	opts.GitURL = data.GitURL.ValueString()
-
-	// Other options can be overridden by extra_env, with a warning.
-	// Keep track of which options are overridden.
-	overrides := make(map[string]struct{})
-
-	if !data.BaseImageCacheDir.IsNull() {
-		overrides["ENVBUILDER_BASE_IMAGE_CACHE_DIR"] = struct{}{}
-		opts.BaseImageCacheDir = data.BaseImageCacheDir.ValueString()
-	}
-
-	if !data.BuildContextPath.IsNull() {
-		overrides["ENVBUILDER_BUILD_CONTEXT_PATH"] = struct{}{}
-		opts.BuildContextPath = data.BuildContextPath.ValueString()
-	}
-
-	if !data.CacheTTLDays.IsNull() {
-		overrides["ENVBUILDER_CACHE_TTL_DAYS"] = struct{}{}
-		opts.CacheTTLDays = data.CacheTTLDays.ValueInt64()
-	}
-
-	if !data.DevcontainerDir.IsNull() {
-		overrides["ENVBUILDER_DEVCONTAINER_DIR"] = struct{}{}
-		opts.DevcontainerDir = data.DevcontainerDir.ValueString()
-	}
-
-	if !data.DevcontainerJSONPath.IsNull() {
-		overrides["ENVBUILDER_DEVCONTAINER_JSON_PATH"] = struct{}{}
-		opts.DevcontainerJSONPath = data.DevcontainerJSONPath.ValueString()
-	}
-
-	if !data.DockerfilePath.IsNull() {
-		overrides["ENVBUILDER_DOCKERFILE_PATH"] = struct{}{}
-		opts.DockerfilePath = data.DockerfilePath.ValueString()
-	}
-
-	if !data.DockerConfigBase64.IsNull() {
-		overrides["ENVBUILDER_DOCKER_CONFIG_BASE64"] = struct{}{}
-		opts.DockerConfigBase64 = data.DockerConfigBase64.ValueString()
-	}
-
-	if !data.ExitOnBuildFailure.IsNull() {
-		overrides["ENVBUILDER_EXIT_ON_BUILD_FAILURE"] = struct{}{}
-		opts.ExitOnBuildFailure = data.ExitOnBuildFailure.ValueBool()
-	}
-
-	if !data.FallbackImage.IsNull() {
-		overrides["ENVBUILDER_FALLBACK_IMAGE"] = struct{}{}
-		opts.FallbackImage = data.FallbackImage.ValueString()
-	}
-
-	if !data.GitCloneDepth.IsNull() {
-		overrides["ENVBUILDER_GIT_CLONE_DEPTH"] = struct{}{}
-		opts.GitCloneDepth = data.GitCloneDepth.ValueInt64()
-	}
-
-	if !data.GitCloneSingleBranch.IsNull() {
-		overrides["ENVBUILDER_GIT_CLONE_SINGLE_BRANCH"] = struct{}{}
-		opts.GitCloneSingleBranch = data.GitCloneSingleBranch.ValueBool()
-	}
-
-	if !data.GitHTTPProxyURL.IsNull() {
-		overrides["ENVBUILDER_GIT_HTTP_PROXY_URL"] = struct{}{}
-		opts.GitHTTPProxyURL = data.GitHTTPProxyURL.ValueString()
-	}
-
-	if !data.GitSSHPrivateKeyPath.IsNull() {
-		overrides["ENVBUILDER_GIT_SSH_PRIVATE_KEY_PATH"] = struct{}{}
-		opts.GitSSHPrivateKeyPath = data.GitSSHPrivateKeyPath.ValueString()
-	}
-
-	if !data.GitUsername.IsNull() {
-		overrides["ENVBUILDER_GIT_USERNAME"] = struct{}{}
-		opts.GitUsername = data.GitUsername.ValueString()
-	}
-
-	if !data.GitPassword.IsNull() {
-		overrides["ENVBUILDER_GIT_PASSWORD"] = struct{}{}
-		opts.GitPassword = data.GitPassword.ValueString()
-	}
-
-	if !data.IgnorePaths.IsNull() {
-		overrides["ENVBUILDER_IGNORE_PATHS"] = struct{}{}
-		opts.IgnorePaths = tfListToStringSlice(data.IgnorePaths)
-	}
-
-	if !data.Insecure.IsNull() {
-		overrides["ENVBUILDER_INSECURE"] = struct{}{}
-		opts.Insecure = data.Insecure.ValueBool()
-	}
-
-	if data.RemoteRepoBuildMode.IsNull() {
-		opts.RemoteRepoBuildMode = true
-	} else {
-		overrides["ENVBUILDER_REMOTE_REPO_BUILD_MODE"] = struct{}{}
-		opts.RemoteRepoBuildMode = data.RemoteRepoBuildMode.ValueBool()
-	}
-
-	if !data.SSLCertBase64.IsNull() {
-		overrides["ENVBUILDER_SSL_CERT_BASE64"] = struct{}{}
-		opts.SSLCertBase64 = data.SSLCertBase64.ValueString()
-	}
-
-	if !data.Verbose.IsNull() {
-		overrides["ENVBUILDER_VERBOSE"] = struct{}{}
-		opts.Verbose = data.Verbose.ValueBool()
-	}
-
-	if !data.WorkspaceFolder.IsNull() {
-		overrides["ENVBUILDER_WORKSPACE_FOLDER"] = struct{}{}
-		opts.WorkspaceFolder = data.WorkspaceFolder.ValueString()
-	}
-
-	// convert extraEnv to a map for ease of use.
-	extraEnv := make(map[string]string)
-	for k, v := range data.ExtraEnv.Elements() {
-		extraEnv[k] = tfValueToString(v)
-	}
-	diags = append(diags, overrideOptionsFromExtraEnv(&opts, extraEnv, overrides)...)
-
-	return opts, diags
-}
-
-func overrideOptionsFromExtraEnv(opts *eboptions.Options, extraEnv map[string]string, overrides map[string]struct{}) diag.Diagnostics {
-	var diags diag.Diagnostics
-	// Make a map of the options for easy lookup.
-	optsMap := make(map[string]pflag.Value)
-	for _, opt := range opts.CLI() {
-		optsMap[opt.Env] = opt.Value
-	}
-	for key, val := range extraEnv {
-		switch key {
-
-		// These options may not be overridden.
-		case "ENVBUILDER_CACHE_REPO", "ENVBUILDER_GIT_URL":
-			diags.AddAttributeWarning(path.Root("extra_env"),
-				"Cannot override required environment variable",
-				fmt.Sprintf("The key %q in extra_env cannot be overridden.", key),
-			)
-			continue
-
-		default:
-			// Check if the option was set on the provider data model and generate a warning if so.
-			if _, overridden := overrides[key]; overridden {
-				diags.AddAttributeWarning(path.Root("extra_env"),
-					"Overriding provider environment variable",
-					fmt.Sprintf("The key %q in extra_env overrides an option set on the provider.", key),
-				)
-			}
-
-			// XXX: workaround for serpent behaviour where calling Set() on a
-			// string slice will append instead of replace: set to empty first.
-			if key == "ENVBUILDER_IGNORE_PATHS" {
-				_ = optsMap[key].Set("")
-			}
-
-			opt, found := optsMap[key]
-			if !found {
-				// ignore unknown keys
-				continue
-			}
-
-			if err := opt.Set(val); err != nil {
-				diags.AddAttributeError(path.Root("extra_env"),
-					"Invalid value for environment variable",
-					fmt.Sprintf("The key %q in extra_env has an invalid value: %s", key, err),
-				)
-			}
-		}
-	}
-	return diags
-}
-
-func computeEnvFromOptions(opts eboptions.Options, extraEnv map[string]string) map[string]string {
-	allEnvKeys := make(map[string]struct{})
-	for _, opt := range opts.CLI() {
-		if opt.Env == "" {
-			continue
-		}
-		allEnvKeys[opt.Env] = struct{}{}
-	}
-
-	// Only set the environment variables from opts that are not legacy options.
-	// Legacy options are those that are not prefixed with ENVBUILDER_.
-	// While we can detect when a legacy option is set, overriding it becomes
-	// problematic. Erring on the side of caution, we will not override legacy options.
-	isEnvbuilderOption := func(key string) bool {
-		switch key {
-		case "CODER_AGENT_URL", "CODER_AGENT_TOKEN", "CODER_AGENT_SUBSYSTEM":
-			return true // kinda
-		default:
-			return strings.HasPrefix(key, "ENVBUILDER_")
-		}
-	}
-
-	computed := make(map[string]string)
-	for _, opt := range opts.CLI() {
-		if opt.Env == "" {
-			continue
-		}
-		// TODO: remove this check once support for legacy options is removed.
-		if !isEnvbuilderOption(opt.Env) {
-			continue
-		}
-		var val string
-		if sa, ok := opt.Value.(*serpent.StringArray); ok {
-			val = strings.Join(sa.GetSlice(), ",")
-		} else {
-			val = opt.Value.String()
-		}
-
-		switch val {
-		case "", "false", "0":
-			// Skip zero values.
-			continue
-		}
-		computed[opt.Env] = val
-	}
-
-	// Merge in extraEnv, which may override values from opts.
-	// Skip any keys that are envbuilder options.
-	for key, val := range extraEnv {
-		if isEnvbuilderOption(key) {
-			continue
-		}
-		computed[key] = val
-	}
-	return computed
-}
-
 // setComputedEnv sets data.Env and data.EnvMap based on the values of the
 // other fields in the model.
 func (data *CachedImageResourceModel) setComputedEnv(ctx context.Context, env map[string]string) diag.Diagnostics {
 	var diag, ds diag.Diagnostics
 	data.EnvMap, ds = basetypes.NewMapValueFrom(ctx, types.StringType, env)
 	diag = append(diag, ds...)
-	data.Env, ds = basetypes.NewListValueFrom(ctx, types.StringType, sortedKeyValues(env))
+	data.Env, ds = basetypes.NewListValueFrom(ctx, types.StringType, tfutil.DockerEnv(env))
 	diag = append(diag, ds...)
 	return diag
 }
@@ -558,7 +313,7 @@ func (r *CachedImageResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 	// Set the expected environment variables.
-	computedEnv := computeEnvFromOptions(opts, tfMapToStringMap(data.ExtraEnv))
+	computedEnv := computeEnvFromOptions(opts, tfutil.TFMapToStringMap(data.ExtraEnv))
 	resp.Diagnostics.Append(data.setComputedEnv(ctx, computedEnv)...)
 
 	// If the previous state is that Image == BuilderImage, then we previously did
@@ -574,7 +329,7 @@ func (r *CachedImageResource) Read(ctx context.Context, req resource.ReadRequest
 	}
 
 	// Check the remote registry for the image we previously found.
-	img, err := getRemoteImage(data.Image.ValueString())
+	img, err := imgutil.GetRemoteImage(data.Image.ValueString())
 	if err != nil {
 		if !strings.Contains(err.Error(), "MANIFEST_UNKNOWN") {
 			// Explicitly not making this an error diag.
@@ -629,7 +384,7 @@ func (r *CachedImageResource) Create(ctx context.Context, req resource.CreateReq
 	}
 
 	// Set the expected environment variables.
-	computedEnv := computeEnvFromOptions(opts, tfMapToStringMap(data.ExtraEnv))
+	computedEnv := computeEnvFromOptions(opts, tfutil.TFMapToStringMap(data.ExtraEnv))
 	resp.Diagnostics.Append(data.setComputedEnv(ctx, computedEnv)...)
 
 	cachedImg, err := runCacheProbe(ctx, data.BuilderImage.ValueString(), opts)
@@ -716,7 +471,7 @@ func runCacheProbe(ctx context.Context, builderImage string, opts eboptions.Opti
 	// In order to correctly reproduce the final layer of the cached image, we
 	// need the envbuilder binary used to originally build the image!
 	envbuilderPath := filepath.Join(tmpDir, "envbuilder")
-	if err := extractEnvbuilderFromImage(ctx, builderImage, envbuilderPath); err != nil {
+	if err := imgutil.ExtractEnvbuilderFromImage(ctx, builderImage, envbuilderPath); err != nil {
 		tflog.Error(ctx, "failed to fetch envbuilder binary from builder image", map[string]any{"err": err})
 		return nil, fmt.Errorf("failed to fetch the envbuilder binary from the builder image: %s", err.Error())
 	}
@@ -729,7 +484,7 @@ func runCacheProbe(ctx context.Context, builderImage string, opts eboptions.Opti
 	// We always want to get the cached image.
 	opts.GetCachedImage = true
 	// Log to the Terraform logger.
-	opts.Logger = tfLogFunc(ctx)
+	opts.Logger = tfutil.TFLogFunc(ctx)
 
 	// We don't require users to set a workspace folder, but maybe there's a
 	// reason someone may need to.
@@ -765,166 +520,4 @@ func runCacheProbe(ctx context.Context, builderImage string, opts eboptions.Opti
 	opts.SkipRebuild = false
 
 	return envbuilder.RunCacheProbe(ctx, opts)
-}
-
-// getRemoteImage fetches the image manifest of the image.
-func getRemoteImage(imgRef string) (v1.Image, error) {
-	ref, err := name.ParseReference(imgRef)
-	if err != nil {
-		return nil, fmt.Errorf("parse reference: %w", err)
-	}
-
-	img, err := remote.Image(ref, remote.WithAuthFromKeychain(authn.DefaultKeychain))
-	if err != nil {
-		return nil, fmt.Errorf("check remote image: %w", err)
-	}
-
-	return img, nil
-}
-
-// extractEnvbuilderFromImage reads the image located at imgRef and extracts
-// MagicBinaryLocation to destPath.
-func extractEnvbuilderFromImage(ctx context.Context, imgRef, destPath string) error {
-	needle := filepath.Clean(constants.MagicBinaryLocation)[1:] // skip leading '/'
-	img, err := getRemoteImage(imgRef)
-	if err != nil {
-		return fmt.Errorf("check remote image: %w", err)
-	}
-
-	layers, err := img.Layers()
-	if err != nil {
-		return fmt.Errorf("get image layers: %w", err)
-	}
-
-	// Check the layers in reverse order. The last layers are more likely to
-	// include the binary.
-	for i := len(layers) - 1; i >= 0; i-- {
-		ul, err := layers[i].Uncompressed()
-		if err != nil {
-			return fmt.Errorf("get uncompressed layer: %w", err)
-		}
-
-		tr := tar.NewReader(ul)
-		for {
-			th, err := tr.Next()
-			if err == io.EOF {
-				break
-			}
-
-			if err != nil {
-				return fmt.Errorf("read tar header: %w", err)
-			}
-
-			name := filepath.Clean(th.Name)
-			if th.Typeflag != tar.TypeReg {
-				tflog.Debug(ctx, "skip non-regular file", map[string]any{"name": name, "layer_idx": i + 1})
-				continue
-			}
-
-			if name != needle {
-				tflog.Debug(ctx, "skip file", map[string]any{"name": name, "layer_idx": i + 1})
-				continue
-			}
-
-			tflog.Debug(ctx, "found file", map[string]any{"name": name, "layer_idx": i + 1})
-			if err := os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
-				return fmt.Errorf("create parent directories: %w", err)
-			}
-			destF, err := os.Create(destPath)
-			if err != nil {
-				return fmt.Errorf("create dest file for writing: %w", err)
-			}
-			defer destF.Close()
-			_, err = io.Copy(destF, tr)
-			if err != nil {
-				return fmt.Errorf("copy dest file from image: %w", err)
-			}
-			if err := destF.Close(); err != nil {
-				return fmt.Errorf("close dest file: %w", err)
-			}
-
-			if err := os.Chmod(destPath, 0o755); err != nil {
-				return fmt.Errorf("chmod file: %w", err)
-			}
-			return nil
-		}
-	}
-
-	return fmt.Errorf("extract envbuilder binary from image %q: %w", imgRef, os.ErrNotExist)
-}
-
-// tfValueToString converts an attr.Value to its string representation
-// based on its Terraform type. This is needed because the String()
-// method on an attr.Value creates a 'human-readable' version of the type, which
-// leads to quotes, escaped characters, and other assorted sadness.
-func tfValueToString(val attr.Value) string {
-	if val.IsUnknown() || val.IsNull() {
-		return ""
-	}
-	if vs, ok := val.(interface{ ValueString() string }); ok {
-		return vs.ValueString()
-	}
-	if vb, ok := val.(interface{ ValueBool() bool }); ok {
-		return fmt.Sprintf("%t", vb.ValueBool())
-	}
-	if vi, ok := val.(interface{ ValueInt64() int64 }); ok {
-		return fmt.Sprintf("%d", vi.ValueInt64())
-	}
-	panic(fmt.Errorf("tfValueToString: value %T is not a supported type", val))
-}
-
-// tfListToStringSlice converts a types.List to a []string by calling
-// tfValueToString on each element.
-func tfListToStringSlice(l types.List) []string {
-	var ss []string
-	for _, el := range l.Elements() {
-		ss = append(ss, tfValueToString(el))
-	}
-	return ss
-}
-
-// tfMapToStringMap converts a types.Map to a map[string]string by calling
-// tfValueToString on each element.
-func tfMapToStringMap(m types.Map) map[string]string {
-	res := make(map[string]string)
-	for k, v := range m.Elements() {
-		res[k] = tfValueToString(v)
-	}
-	return res
-}
-
-// tfLogFunc is an adapter to envbuilder/log.Func.
-func tfLogFunc(ctx context.Context) eblog.Func {
-	return func(level eblog.Level, format string, args ...any) {
-		var logFn func(context.Context, string, ...map[string]interface{})
-		switch level {
-		case eblog.LevelTrace:
-			logFn = tflog.Trace
-		case eblog.LevelDebug:
-			logFn = tflog.Debug
-		case eblog.LevelWarn:
-			logFn = tflog.Warn
-		case eblog.LevelError:
-			logFn = tflog.Error
-		default:
-			logFn = tflog.Info
-		}
-		logFn(ctx, fmt.Sprintf(format, args...))
-	}
-}
-
-// sortedKeyValues returns the keys and values of the map in the form "key=value"
-// sorted by key in lexicographical order.
-func sortedKeyValues(m map[string]string) []string {
-	pairs := make([]string, 0, len(m))
-	var sb strings.Builder
-	for k := range m {
-		_, _ = sb.WriteString(k)
-		_, _ = sb.WriteRune('=')
-		_, _ = sb.WriteString(m[k])
-		pairs = append(pairs, sb.String())
-		sb.Reset()
-	}
-	sort.Strings(pairs)
-	return pairs
 }
