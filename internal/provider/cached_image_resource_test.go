@@ -124,6 +124,40 @@ RUN date > /date.txt`,
 				)
 			},
 		},
+		{
+			// This tests that a multi-stage build works correctly.
+			name: "multistage_run_copy",
+			files: map[string]string{
+				"Dockerfile": `
+		FROM localhost:5000/test-ubuntu:latest AS a
+		RUN date > /date.txt
+		FROM localhost:5000/test-ubuntu:latest
+		COPY --from=a /date.txt /date.txt`,
+			},
+			extraEnv: map[string]string{
+				"CODER_AGENT_TOKEN":          "some-token",
+				"CODER_AGENT_URL":            "https://coder.example.com",
+				"FOO":                        testEnvValue,
+				"ENVBUILDER_GIT_URL":         "https://not.the.real.git/url",
+				"ENVBUILDER_CACHE_REPO":      "not-the-real-cache-repo",
+				"ENVBUILDER_DOCKERFILE_PATH": "Dockerfile",
+			},
+			assertEnv: func(t *testing.T, deps testDependencies) resource.TestCheckFunc {
+				return resource.ComposeAggregateTestCheckFunc(
+					assertEnv(t,
+						"CODER_AGENT_TOKEN", "some-token",
+						"CODER_AGENT_URL", "https://coder.example.com",
+						"ENVBUILDER_CACHE_REPO", deps.CacheRepo,
+						"ENVBUILDER_DOCKERFILE_PATH", "Dockerfile",
+						"ENVBUILDER_GIT_SSH_PRIVATE_KEY_PATH", deps.Repo.Key,
+						"ENVBUILDER_GIT_URL", deps.Repo.URL,
+						"ENVBUILDER_REMOTE_REPO_BUILD_MODE", "true",
+						"ENVBUILDER_VERBOSE", "true",
+						"FOO", "bar\nbaz",
+					),
+				)
+			},
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			//nolint: paralleltest

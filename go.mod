@@ -3,7 +3,7 @@ module github.com/coder/terraform-provider-envbuilder
 go 1.22.4
 
 // We use our own Kaniko fork.
-replace github.com/GoogleContainerTools/kaniko => github.com/coder/kaniko v0.0.0-20240807142221-ffc5e60fca41
+replace github.com/GoogleContainerTools/kaniko => github.com/coder/kaniko v0.0.0-20240830141327-f307586e3dca
 
 // Required to import codersdk due to gvisor dependency.
 replace tailscale.com => github.com/coder/tailscale v1.1.1-0.20240702054557-aa558fbe5374
@@ -11,6 +11,7 @@ replace tailscale.com => github.com/coder/tailscale v1.1.1-0.20240702054557-aa55
 require (
 	github.com/GoogleContainerTools/kaniko v1.9.2
 	github.com/coder/envbuilder v1.0.0-rc.0.0.20240830145058-fb7e689f39ed
+	github.com/coder/serpent v0.7.0
 	github.com/docker/docker v26.1.5+incompatible
 	github.com/gliderlabs/ssh v0.3.7
 	github.com/go-git/go-billy/v5 v5.5.0
@@ -22,6 +23,7 @@ require (
 	github.com/hashicorp/terraform-plugin-go v0.23.0
 	github.com/hashicorp/terraform-plugin-log v0.9.0
 	github.com/hashicorp/terraform-plugin-testing v1.10.0
+	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.9.0
 )
 
@@ -96,7 +98,6 @@ require (
 	github.com/coder/pretty v0.0.0-20230908205945-e89ba86370e0 // indirect
 	github.com/coder/quartz v0.1.0 // indirect
 	github.com/coder/retry v1.5.1 // indirect
-	github.com/coder/serpent v0.7.0 // indirect
 	github.com/coder/terraform-provider-coder v0.23.0 // indirect
 	github.com/containerd/cgroups v1.1.0 // indirect
 	github.com/containerd/cgroups/v3 v3.0.2 // indirect
@@ -185,7 +186,6 @@ require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/josharian/native v1.1.1-0.20230202152459-5c7d0dd6ab86 // indirect
 	github.com/jsimonetti/rtnetlink v1.3.5 // indirect
-	github.com/karrick/godirwalk v1.16.1 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
 	github.com/klauspost/compress v1.17.9 // indirect
@@ -255,7 +255,6 @@ require (
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/spf13/afero v1.11.0 // indirect
 	github.com/spf13/cast v1.6.0 // indirect
-	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/tailscale/certstore v0.1.1-0.20220316223106-78d6e1c49d8d // indirect
 	github.com/tailscale/golang-x-crypto v0.0.0-20230713185742-f0b76a10a08e // indirect
 	github.com/tailscale/goupnp v1.0.1-0.20210804011211-c64d0f06ea05 // indirect
@@ -264,6 +263,7 @@ require (
 	github.com/tailscale/wireguard-go v0.0.0-20231121184858-cc193a0b3272 // indirect
 	github.com/tcnksm/go-httpstat v0.2.0 // indirect
 	github.com/tinylib/msgp v1.1.8 // indirect
+	github.com/twpayne/go-vfs/v5 v5.0.4 // indirect
 	github.com/u-root/uio v0.0.0-20240209044354-b3d14b93376a // indirect
 	github.com/valyala/fasthttp v1.55.0 // indirect
 	github.com/vbatts/tar-split v0.11.5 // indirect
