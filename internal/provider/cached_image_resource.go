@@ -455,7 +455,7 @@ func runCacheProbe(ctx context.Context, builderImage string, opts eboptions.Opti
 	}()
 
 	oldKanikoDir := kconfig.KanikoDir
-	tmpKanikoDir := filepath.Join(tmpDir, constants.MagicDir)
+	tmpKanikoDir := filepath.Join(tmpDir, ".envbuilder")
 	// Normally you would set the KANIKO_DIR environment variable, but we are importing kaniko directly.
 	kconfig.KanikoDir = tmpKanikoDir
 	tflog.Info(ctx, "set kaniko dir to "+tmpKanikoDir)
@@ -467,6 +467,7 @@ func runCacheProbe(ctx context.Context, builderImage string, opts eboptions.Opti
 	if err := os.MkdirAll(tmpKanikoDir, 0o755); err != nil {
 		return nil, fmt.Errorf("failed to create kaniko dir: %w", err)
 	}
+	opts.MagicDir = constants.MagicDir(tmpKanikoDir)
 
 	// In order to correctly reproduce the final layer of the cached image, we
 	// need the envbuilder binary used to originally build the image!
