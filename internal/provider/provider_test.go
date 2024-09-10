@@ -3,6 +3,7 @@ package provider
 import (
 	"bufio"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"os"
@@ -35,10 +36,11 @@ var testAccProtoV6ProviderFactories = map[string]func() (tfprotov6.ProviderServe
 
 // testDependencies contain information about stuff the test depends on.
 type testDependencies struct {
-	BuilderImage string
-	CacheRepo    string
-	ExtraEnv     map[string]string
-	Repo         testGitRepoSSH
+	BuilderImage       string
+	CacheRepo          string
+	DockerConfigBase64 string
+	ExtraEnv           map[string]string
+	Repo               testGitRepoSSH
 }
 
 // Config generates a valid Terraform config file from the dependencies.
@@ -47,8 +49,9 @@ func (d *testDependencies) Config(t testing.TB) string {
 
 	tpl := `provider envbuilder {}
 resource "envbuilder_cached_image" "test" {
-  builder_image            = {{ quote .BuilderImage }}
+  builder_image              = {{ quote .BuilderImage }}
 	cache_repo               = {{ quote .CacheRepo }}
+	docker_config_base64     = {{ quote .DockerConfigBase64 }}
 	git_url                  = {{ quote .Repo.URL }}
 	extra_env                = {
 		"ENVBUILDER_GIT_SSH_PRIVATE_KEY_PATH": {{ quote .Repo.Key }}
@@ -78,19 +81,29 @@ func setup(ctx context.Context, t testing.TB, extraEnv, files map[string]string)
 	envbuilderVersion := getEnvOrDefault("ENVBUILDER_VERSION", "latest")
 	envbuilderImageRef := envbuilderImage + ":" + envbuilderVersion
 
-	// TODO: envbuilder creates /.envbuilder/bin/envbuilder owned by root:root which we are unable to clean up.
-	// This causes tests to fail.
+	testUsername := "testuser"
+	testPassword := "testpassword"
+	testAuthBase64 := base64.URLEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", testUsername, testPassword)))
 	regDir := t.TempDir()
-	reg := registrytest.New(t, regDir)
+	reg := registrytest.New(t, regDir, registrytest.BasicAuthMW(t, testUsername, testPassword))
 
 	repoDir := setupGitRepo(t, files)
 	gitRepo := serveGitRepoSSH(ctx, t, repoDir)
+	dockerConfigJSON := fmt.Sprintf(`{
+		"auths": {
+			"%s": {
+				"auth": "%s",
+			}
+		}
+	}`, reg, testAuthBase64)
+	dockerConfigJSONBase64 := base64.StdEncoding.EncodeToString([]byte(dockerConfigJSON))
 
 	return testDependencies{
-		BuilderImage: envbuilderImageRef,
-		CacheRepo:    reg + "/test",
-		ExtraEnv:     extraEnv,
-		Repo:         gitRepo,
+		BuilderImage:       envbuilderImageRef,
+		CacheRepo:          reg + "/test",
+		ExtraEnv:           extraEnv,
+		Repo:               gitRepo,
+		DockerConfigBase64: dockerConfigJSONBase64,
 	}
 }
 
@@ -115,6 +128,7 @@ func seedCache(ctx context.Context, t testing.TB, deps testDependencies) {
 		"ENVBUILDER_VERBOSE":                  "true",
 		"ENVBUILDER_GIT_URL":                  deps.Repo.URL,
 		"ENVBUILDER_GIT_SSH_PRIVATE_KEY_PATH": "/id_ed25519",
+		"ENVBUILDER_DOCKER_CONFIG_BASE64":     deps.DockerConfigBase64,
 	}
 
 	for k, v := range deps.ExtraEnv {

@@ -10,7 +10,7 @@ replace tailscale.com => github.com/coder/tailscale v1.1.1-0.20240702054557-aa55
 
 require (
 	github.com/GoogleContainerTools/kaniko v1.9.2
-	github.com/coder/envbuilder v1.0.0-rc.0.0.20240830145058-fb7e689f39ed
+	github.com/coder/envbuilder v1.0.0-rc.0.0.20240910082823-b7781d802f88
 	github.com/coder/serpent v0.7.0
 	github.com/docker/docker v26.1.5+incompatible
 	github.com/gliderlabs/ssh v0.3.7
@@ -295,7 +295,7 @@ require (
 	go4.org/netipx v0.0.0-20230728180743-ad4cb58a6516 // indirect
 	golang.org/x/crypto v0.26.0 // indirect
 	golang.org/x/exp v0.0.0-20240416160154-fe59bbe5cc7f // indirect
-	golang.org/x/mod v0.19.0 // indirect
+	golang.org/x/mod v0.21.0 // indirect
 	golang.org/x/net v0.26.0 // indirect
 	golang.org/x/oauth2 v0.20.0 // indirect
 	golang.org/x/sync v0.8.0 // indirect
