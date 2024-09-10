@@ -7,7 +7,9 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
+	eboptions "github.com/coder/envbuilder/options"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
@@ -33,7 +35,9 @@ func GetRemoteImage(imgRef string) (v1.Image, error) {
 // ExtractEnvbuilderFromImage reads the image located at imgRef and extracts
 // MagicBinaryLocation to destPath.
 func ExtractEnvbuilderFromImage(ctx context.Context, imgRef, destPath string) error {
-	needle := ".envbuilder/bin/envbuilder"
+	var o eboptions.Options
+	o.SetDefaults()
+	needle := strings.TrimPrefix(o.BinaryPath, "/")
 	img, err := GetRemoteImage(imgRef)
 	if err != nil {
 		return fmt.Errorf("check remote image: %w", err)
