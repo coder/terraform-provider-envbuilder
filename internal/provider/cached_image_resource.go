@@ -10,7 +10,6 @@ import (
 
 	kconfig "github.com/GoogleContainerTools/kaniko/pkg/config"
 	"github.com/coder/envbuilder"
-	"github.com/coder/envbuilder/constants"
 	eboptions "github.com/coder/envbuilder/options"
 	"github.com/coder/terraform-provider-envbuilder/internal/imgutil"
 	"github.com/coder/terraform-provider-envbuilder/internal/tfutil"
@@ -467,7 +466,8 @@ func runCacheProbe(ctx context.Context, builderImage string, opts eboptions.Opti
 	if err := os.MkdirAll(tmpKanikoDir, 0o755); err != nil {
 		return nil, fmt.Errorf("failed to create kaniko dir: %w", err)
 	}
-	opts.MagicDir = constants.MagicDir(tmpKanikoDir)
+	// Use the temporary directory as our 'magic dir'.
+	opts.MagicDirBase = tmpKanikoDir
 
 	// In order to correctly reproduce the final layer of the cached image, we
 	// need the envbuilder binary used to originally build the image!
@@ -496,13 +496,6 @@ func runCacheProbe(ctx context.Context, builderImage string, opts eboptions.Opti
 		}
 		tflog.Debug(ctx, "workspace_folder not specified, using temp dir", map[string]any{"workspace_folder": opts.WorkspaceFolder})
 	}
-
-	// We need a place to clone the repo.
-	repoDir := filepath.Join(tmpDir, "repo")
-	if err := os.MkdirAll(repoDir, 0o755); err != nil {
-		return nil, fmt.Errorf("failed to create repo dir: %w", err)
-	}
-	opts.RemoteRepoDir = repoDir
 
 	// The below options are not relevant and are set to their zero value
 	// explicitly.
