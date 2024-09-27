@@ -10,7 +10,7 @@ replace tailscale.com => github.com/coder/tailscale v1.1.1-0.20240702054557-aa55
 
 require (
 	github.com/GoogleContainerTools/kaniko v1.9.2
-	github.com/coder/envbuilder v1.0.0-rc.0.0.20240925123650-9c315aabfaef
+	github.com/coder/envbuilder v1.0.0-rc.0.0.20240927195324-5c150b3c1e35
 	github.com/coder/serpent v0.8.0
 	github.com/docker/docker v26.1.5+incompatible
 	github.com/gliderlabs/ssh v0.3.7
