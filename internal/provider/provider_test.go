@@ -194,7 +194,7 @@ SCANLOGS:
 			}
 			log := scanner.Text()
 			t.Logf("envbuilder: %s", log)
-			if strings.Contains(log, "=== Running the init command") {
+			if strings.Contains(log, "=== Running init command") {
 				break SCANLOGS
 			}
 		}
