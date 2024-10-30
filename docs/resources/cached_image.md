@@ -37,7 +37,7 @@ The cached image resource can be used to retrieve a cached image produced by env
 - `git_clone_single_branch` (Boolean) (Envbuilder option) Clone only a single branch of the Git repository.
 - `git_http_proxy_url` (String) (Envbuilder option) The URL for the HTTP proxy. This is optional.
 - `git_password` (String, Sensitive) (Envbuilder option) The password to use for Git authentication. This is optional.
-- `git_ssh_private_key_base64` (String) (Envbuilder option) Base64 encoded SSH private key to be used for Git authentication.
+- `git_ssh_private_key_base64` (String, Sensitive) (Envbuilder option) Base64 encoded SSH private key to be used for Git authentication.
 - `git_ssh_private_key_path` (String) (Envbuilder option) Path to an SSH private key to be used for Git authentication.
 - `git_username` (String) (Envbuilder option) The username to use for Git authentication. This is optional.
 - `ignore_paths` (List of String) (Envbuilder option) The comma separated list of paths to ignore when building the workspace.
