@@ -49,28 +49,29 @@ type CachedImageResourceModel struct {
 	CacheRepo    types.String `tfsdk:"cache_repo"`
 	GitURL       types.String `tfsdk:"git_url"`
 	// Optional "inputs".
-	BaseImageCacheDir    types.String `tfsdk:"base_image_cache_dir"`
-	BuildContextPath     types.String `tfsdk:"build_context_path"`
-	CacheTTLDays         types.Int64  `tfsdk:"cache_ttl_days"`
-	DevcontainerDir      types.String `tfsdk:"devcontainer_dir"`
-	DevcontainerJSONPath types.String `tfsdk:"devcontainer_json_path"`
-	DockerfilePath       types.String `tfsdk:"dockerfile_path"`
-	DockerConfigBase64   types.String `tfsdk:"docker_config_base64"`
-	ExitOnBuildFailure   types.Bool   `tfsdk:"exit_on_build_failure"`
-	ExtraEnv             types.Map    `tfsdk:"extra_env"`
-	FallbackImage        types.String `tfsdk:"fallback_image"`
-	GitCloneDepth        types.Int64  `tfsdk:"git_clone_depth"`
-	GitCloneSingleBranch types.Bool   `tfsdk:"git_clone_single_branch"`
-	GitHTTPProxyURL      types.String `tfsdk:"git_http_proxy_url"`
-	GitPassword          types.String `tfsdk:"git_password"`
-	GitSSHPrivateKeyPath types.String `tfsdk:"git_ssh_private_key_path"`
-	GitUsername          types.String `tfsdk:"git_username"`
-	IgnorePaths          types.List   `tfsdk:"ignore_paths"`
-	Insecure             types.Bool   `tfsdk:"insecure"`
-	RemoteRepoBuildMode  types.Bool   `tfsdk:"remote_repo_build_mode"`
-	SSLCertBase64        types.String `tfsdk:"ssl_cert_base64"`
-	Verbose              types.Bool   `tfsdk:"verbose"`
-	WorkspaceFolder      types.String `tfsdk:"workspace_folder"`
+	BaseImageCacheDir      types.String `tfsdk:"base_image_cache_dir"`
+	BuildContextPath       types.String `tfsdk:"build_context_path"`
+	CacheTTLDays           types.Int64  `tfsdk:"cache_ttl_days"`
+	DevcontainerDir        types.String `tfsdk:"devcontainer_dir"`
+	DevcontainerJSONPath   types.String `tfsdk:"devcontainer_json_path"`
+	DockerfilePath         types.String `tfsdk:"dockerfile_path"`
+	DockerConfigBase64     types.String `tfsdk:"docker_config_base64"`
+	ExitOnBuildFailure     types.Bool   `tfsdk:"exit_on_build_failure"`
+	ExtraEnv               types.Map    `tfsdk:"extra_env"`
+	FallbackImage          types.String `tfsdk:"fallback_image"`
+	GitCloneDepth          types.Int64  `tfsdk:"git_clone_depth"`
+	GitCloneSingleBranch   types.Bool   `tfsdk:"git_clone_single_branch"`
+	GitHTTPProxyURL        types.String `tfsdk:"git_http_proxy_url"`
+	GitPassword            types.String `tfsdk:"git_password"`
+	GitSSHPrivateKeyPath   types.String `tfsdk:"git_ssh_private_key_path"`
+	GitSSHPrivateKeyBase64 types.String `tfsdk:"git_ssh_private_key_base64"`
+	GitUsername            types.String `tfsdk:"git_username"`
+	IgnorePaths            types.List   `tfsdk:"ignore_paths"`
+	Insecure               types.Bool   `tfsdk:"insecure"`
+	RemoteRepoBuildMode    types.Bool   `tfsdk:"remote_repo_build_mode"`
+	SSLCertBase64          types.String `tfsdk:"ssl_cert_base64"`
+	Verbose                types.Bool   `tfsdk:"verbose"`
+	WorkspaceFolder        types.String `tfsdk:"workspace_folder"`
 	// Computed "outputs".
 	Env    types.List   `tfsdk:"env"`
 	EnvMap types.Map    `tfsdk:"env_map"`
@@ -184,6 +185,10 @@ func (r *CachedImageResource) Schema(ctx context.Context, req resource.SchemaReq
 			},
 			"git_ssh_private_key_path": schema.StringAttribute{
 				MarkdownDescription: "(Envbuilder option) Path to an SSH private key to be used for Git authentication.",
+				Optional:            true,
+			},
+			"git_ssh_private_key_base64": schema.StringAttribute{
+				MarkdownDescription: "(Envbuilder option) Base64 encoded SSH private key to be used for Git authentication.",
 				Optional:            true,
 			},
 			"git_username": schema.StringAttribute{

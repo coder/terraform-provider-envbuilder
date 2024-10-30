@@ -102,6 +102,11 @@ func optionsFromDataModel(data CachedImageResourceModel) (eboptions.Options, dia
 		opts.GitSSHPrivateKeyPath = data.GitSSHPrivateKeyPath.ValueString()
 	}
 
+	if !data.GitSSHPrivateKeyBase64.IsNull() {
+		providerOpts["ENVBUILDER_GIT_SSH_PRIVATE_KEY_BASE64"] = true
+		opts.GitSSHPrivateKeyBase64 = data.GitSSHPrivateKeyBase64.ValueString()
+	}
+
 	if !data.GitUsername.IsNull() {
 		providerOpts["ENVBUILDER_GIT_USERNAME"] = true
 		opts.GitUsername = data.GitUsername.ValueString()
