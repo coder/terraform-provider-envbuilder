@@ -190,6 +190,7 @@ func (r *CachedImageResource) Schema(ctx context.Context, req resource.SchemaReq
 			"git_ssh_private_key_base64": schema.StringAttribute{
 				MarkdownDescription: "(Envbuilder option) Base64 encoded SSH private key to be used for Git authentication.",
 				Optional:            true,
+				Sensitive:           true,
 			},
 			"git_username": schema.StringAttribute{
 				MarkdownDescription: "(Envbuilder option) The username to use for Git authentication. This is optional.",
