@@ -157,7 +157,7 @@ func optionsFromDataModel(data CachedImageResourceModel) (eboptions.Options, dia
 	diags = append(diags, overrideOptionsFromExtraEnv(&opts, extraEnv, providerOpts)...)
 
 	if opts.GitSSHPrivateKeyPath != "" && opts.GitSSHPrivateKeyBase64 != "" {
-		diags.AddError("Cannot set more than one git ssh private key options",
+		diags.AddError("Cannot set more than one git ssh private key option",
 			"Both ENVBUILDER_GIT_SSH_PRIVATE_KEY_PATH and ENVBUILDER_GIT_SSH_PRIVATE_KEY_BASE64 have been set.")
 	}
 
