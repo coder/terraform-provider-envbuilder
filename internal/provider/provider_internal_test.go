@@ -211,6 +211,59 @@ func Test_optionsFromDataModel(t *testing.T) {
 			},
 			expectNumErrorDiags: 2,
 		},
+		{
+			name: "errors when git ssh private key path and base64 are set",
+			data: CachedImageResourceModel{
+				BuilderImage:           basetypes.NewStringValue("envbuilder:latest"),
+				CacheRepo:              basetypes.NewStringValue("localhost:5000/cache"),
+				GitURL:                 basetypes.NewStringValue("git@git.local/devcontainer.git"),
+				GitSSHPrivateKeyPath:   basetypes.NewStringValue("/tmp/id_rsa"),
+				GitSSHPrivateKeyBase64: basetypes.NewStringValue("cHJpdmF0ZUtleQo="),
+			},
+			expectOpts: eboptions.Options{
+				CacheRepo:              "localhost:5000/cache",
+				GitURL:                 "git@git.local/devcontainer.git",
+				RemoteRepoBuildMode:    true,
+				GitSSHPrivateKeyPath:   "/tmp/id_rsa",
+				GitSSHPrivateKeyBase64: "cHJpdmF0ZUtleQo=",
+			},
+			expectNumErrorDiags: 1,
+		},
+		{
+			name: "extra_env override errors when git ssh private key path and base64 are set",
+			data: CachedImageResourceModel{
+				BuilderImage:           basetypes.NewStringValue("envbuilder:latest"),
+				CacheRepo:              basetypes.NewStringValue("localhost:5000/cache"),
+				GitURL:                 basetypes.NewStringValue("git@git.local/devcontainer.git"),
+				GitSSHPrivateKeyBase64: basetypes.NewStringValue("cHJpdmF0ZUtleQo="),
+				ExtraEnv: extraEnvMap(t,
+					"ENVBUILDER_GIT_SSH_PRIVATE_KEY_PATH", "/tmp/id_rsa",
+				),
+			},
+			expectOpts: eboptions.Options{
+				CacheRepo:              "localhost:5000/cache",
+				GitURL:                 "git@git.local/devcontainer.git",
+				RemoteRepoBuildMode:    true,
+				GitSSHPrivateKeyPath:   "/tmp/id_rsa",
+				GitSSHPrivateKeyBase64: "cHJpdmF0ZUtleQo=",
+			},
+			expectNumErrorDiags: 1,
+		},
+		{
+			name: "required only with base64 ssh key",
+			data: CachedImageResourceModel{
+				BuilderImage:           basetypes.NewStringValue("envbuilder:latest"),
+				CacheRepo:              basetypes.NewStringValue("localhost:5000/cache"),
+				GitURL:                 basetypes.NewStringValue("git@git.local/devcontainer.git"),
+				GitSSHPrivateKeyBase64: basetypes.NewStringValue("cHJpdmF0ZUtleQo="),
+			},
+			expectOpts: eboptions.Options{
+				CacheRepo:              "localhost:5000/cache",
+				GitURL:                 "git@git.local/devcontainer.git",
+				RemoteRepoBuildMode:    true,
+				GitSSHPrivateKeyBase64: "cHJpdmF0ZUtleQo=",
+			},
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
