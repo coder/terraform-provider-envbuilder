@@ -473,7 +473,7 @@ func runCacheProbe(ctx context.Context, builderImage string, opts eboptions.Opti
 		return nil, fmt.Errorf("failed to create kaniko dir: %w", err)
 	}
 	// Use the temporary directory as our 'magic dir'.
-	opts.MagicDirBase = tmpKanikoDir
+	opts.WorkingDirBase = tmpKanikoDir
 
 	// In order to correctly reproduce the final layer of the cached image, we
 	// need the envbuilder binary used to originally build the image!
