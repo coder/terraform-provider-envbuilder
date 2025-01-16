@@ -70,7 +70,7 @@ func Test_optionsFromDataModel(t *testing.T) {
 				GitURL:               "git@git.local/devcontainer.git",
 				BaseImageCacheDir:    "/tmp/cache",
 				BuildContextPath:     ".",
-				BuildSecrets:         []string{"FOO=bar", "BAZ=qux"},
+				BuildSecrets:         []string{"BAZ=qux", "FOO=bar"}, // Sorted
 				CacheTTLDays:         7,
 				DevcontainerDir:      ".devcontainer",
 				DevcontainerJSONPath: ".devcontainer/devcontainer.json",
@@ -96,11 +96,8 @@ func Test_optionsFromDataModel(t *testing.T) {
 			name: "extra env override",
 			data: CachedImageResourceModel{
 				BuilderImage: basetypes.NewStringValue("envbuilder:latest"),
-				BuildSecrets: basetypes.NewMapValueMust(basetypes.StringType{}, map[string]attr.Value{
-					"FOO": basetypes.NewStringValue("bar"),
-				}),
-				CacheRepo: basetypes.NewStringValue("localhost:5000/cache"),
-				GitURL:    basetypes.NewStringValue("git@git.local/devcontainer.git"),
+				CacheRepo:    basetypes.NewStringValue("localhost:5000/cache"),
+				GitURL:       basetypes.NewStringValue("git@git.local/devcontainer.git"),
 				ExtraEnv: extraEnvMap(t,
 					"CODER_AGENT_TOKEN", "token",
 					"CODER_AGENT_URL", "http://coder",

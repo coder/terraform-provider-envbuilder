@@ -122,6 +122,11 @@ func (r *CachedImageResource) Schema(ctx context.Context, req resource.SchemaReq
 				MarkdownDescription: "(Envbuilder option) Can be specified when a DockerfilePath is specified outside the base WorkspaceFolder. This path MUST be relative to the WorkspaceFolder path into which the repo is cloned.",
 				Optional:            true,
 			},
+			"build_secrets": schema.MapAttribute{
+				MarkdownDescription: "The secrets to use for the build. This is a map of key-value pairs.",
+				ElementType:         types.StringType,
+				Optional:            true,
+			},
 			"cache_ttl_days": schema.Int64Attribute{
 				MarkdownDescription: "(Envbuilder option) The number of days to use cached layers before expiring them. Defaults to 7 days.",
 				Optional:            true,

@@ -2,6 +2,7 @@ package provider
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	eboptions "github.com/coder/envbuilder/options"
@@ -58,6 +59,7 @@ func optionsFromDataModel(data CachedImageResourceModel) (eboptions.Options, dia
 		for k, v := range buildSecretMap {
 			buildSecretSlice = append(buildSecretSlice, fmt.Sprintf("%s=%s", k, v))
 		}
+		slices.Sort(buildSecretSlice)
 
 		opts.BuildSecrets = buildSecretSlice
 	}
@@ -214,7 +216,7 @@ func overrideOptionsFromExtraEnv(opts *eboptions.Options, extraEnv map[string]st
 
 		// XXX: workaround for serpent behaviour where calling Set() on a
 		// string slice will append instead of replace: set to empty first.
-		if key == "ENVBUILDER_IGNORE_PATHS" {
+		if _, ok := optsMap[key].(*serpent.StringArray); ok {
 			_ = optsMap[key].Set("")
 		}
 
