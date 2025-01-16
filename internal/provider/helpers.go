@@ -47,6 +47,21 @@ func optionsFromDataModel(data CachedImageResourceModel) (eboptions.Options, dia
 		opts.BuildContextPath = data.BuildContextPath.ValueString()
 	}
 
+	if !data.BuildSecrets.IsNull() {
+		providerOpts["ENVBUILDER_BUILD_SECRETS"] = true
+
+		// Depending on use case, users might want to provide build secrets as a map or a list of strings.
+		// The string list option is supported by extra_env, so we support the map option here. Envbuilder
+		// expects a list of strings, so we convert the map to a list of strings here.
+		buildSecretMap := tfutil.TFMapToStringMap(data.BuildSecrets)
+		buildSecretSlice := make([]string, 0, len(buildSecretMap))
+		for k, v := range buildSecretMap {
+			buildSecretSlice = append(buildSecretSlice, fmt.Sprintf("%s=%s", k, v))
+		}
+
+		opts.BuildSecrets = buildSecretSlice
+	}
+
 	if !data.CacheTTLDays.IsNull() {
 		providerOpts["ENVBUILDER_CACHE_TTL_DAYS"] = true
 		opts.CacheTTLDays = data.CacheTTLDays.ValueInt64()
