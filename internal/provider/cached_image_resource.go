@@ -51,6 +51,7 @@ type CachedImageResourceModel struct {
 	// Optional "inputs".
 	BaseImageCacheDir      types.String `tfsdk:"base_image_cache_dir"`
 	BuildContextPath       types.String `tfsdk:"build_context_path"`
+	BuildSecrets           types.Map    `tfsdk:"build_secrets"`
 	CacheTTLDays           types.Int64  `tfsdk:"cache_ttl_days"`
 	DevcontainerDir        types.String `tfsdk:"devcontainer_dir"`
 	DevcontainerJSONPath   types.String `tfsdk:"devcontainer_json_path"`
@@ -119,6 +120,11 @@ func (r *CachedImageResource) Schema(ctx context.Context, req resource.SchemaReq
 			},
 			"build_context_path": schema.StringAttribute{
 				MarkdownDescription: "(Envbuilder option) Can be specified when a DockerfilePath is specified outside the base WorkspaceFolder. This path MUST be relative to the WorkspaceFolder path into which the repo is cloned.",
+				Optional:            true,
+			},
+			"build_secrets": schema.MapAttribute{
+				MarkdownDescription: "The secrets to use for the build. This is a map of key-value pairs.",
+				ElementType:         types.StringType,
 				Optional:            true,
 			},
 			"cache_ttl_days": schema.Int64Attribute{

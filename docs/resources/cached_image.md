@@ -25,6 +25,7 @@ The cached image resource can be used to retrieve a cached image produced by env
 
 - `base_image_cache_dir` (String) (Envbuilder option) The path to a directory where the base image can be found. This should be a read-only directory solely mounted for the purpose of caching the base image.
 - `build_context_path` (String) (Envbuilder option) Can be specified when a DockerfilePath is specified outside the base WorkspaceFolder. This path MUST be relative to the WorkspaceFolder path into which the repo is cloned.
+- `build_secrets` (Map of String) The secrets to use for the build. This is a map of key-value pairs.
 - `cache_ttl_days` (Number) (Envbuilder option) The number of days to use cached layers before expiring them. Defaults to 7 days.
 - `devcontainer_dir` (String) (Envbuilder option) The path to the folder containing the devcontainer.json file that will be used to build the workspace and can either be an absolute path or a path relative to the workspace folder. If not provided, defaults to `.devcontainer`.
 - `devcontainer_json_path` (String) (Envbuilder option) The path to a devcontainer.json file that is either an absolute path or a path relative to DevcontainerDir. This can be used in cases where one wants to substitute an edited devcontainer.json file for the one that exists in the repo.

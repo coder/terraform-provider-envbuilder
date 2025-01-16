@@ -2,6 +2,7 @@ package provider
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	eboptions "github.com/coder/envbuilder/options"
@@ -45,6 +46,22 @@ func optionsFromDataModel(data CachedImageResourceModel) (eboptions.Options, dia
 	if !data.BuildContextPath.IsNull() {
 		providerOpts["ENVBUILDER_BUILD_CONTEXT_PATH"] = true
 		opts.BuildContextPath = data.BuildContextPath.ValueString()
+	}
+
+	if !data.BuildSecrets.IsNull() {
+		providerOpts["ENVBUILDER_BUILD_SECRETS"] = true
+
+		// Depending on use case, users might want to provide build secrets as a map or a list of strings.
+		// The string list option is supported by extra_env, so we support the map option here. Envbuilder
+		// expects a list of strings, so we convert the map to a list of strings here.
+		buildSecretMap := tfutil.TFMapToStringMap(data.BuildSecrets)
+		buildSecretSlice := make([]string, 0, len(buildSecretMap))
+		for k, v := range buildSecretMap {
+			buildSecretSlice = append(buildSecretSlice, fmt.Sprintf("%s=%s", k, v))
+		}
+		slices.Sort(buildSecretSlice)
+
+		opts.BuildSecrets = buildSecretSlice
 	}
 
 	if !data.CacheTTLDays.IsNull() {
@@ -199,7 +216,7 @@ func overrideOptionsFromExtraEnv(opts *eboptions.Options, extraEnv map[string]st
 
 		// XXX: workaround for serpent behaviour where calling Set() on a
 		// string slice will append instead of replace: set to empty first.
-		if key == "ENVBUILDER_IGNORE_PATHS" {
+		if _, ok := optsMap[key].(*serpent.StringArray); ok {
 			_ = optsMap[key].Set("")
 		}
 
