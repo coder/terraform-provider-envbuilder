@@ -12,10 +12,10 @@ If it is found that building a particular dev container would produce the same i
 Take a look at the [`envbuilder_cached_image_resource.tf`](./examples/resources/envbuilder_cached_image/envbuilder_cached_image_resource.tf) example for a detailed usage example.
 
 For use with [Coder](https://github.com/coder/coder), see the [Dev Containers documentation](https://coder.com/docs/templates/dev-containers) and check out the example templates:
-- [Docker](https://github.com/coder/coder/tree/main/examples/templates/devcontainer-docker)
-- [Kubernetes](https://github.com/coder/coder/tree/main/examples/templates/devcontainer-kuberntes)
-- [AWS VM](https://github.com/coder/coder/tree/main/examples/templates/devcontainer-aws-vm)
-- [GCP VM](https://github.com/coder/coder/tree/main/examples/templates/devcontainer-gcp-vm)
+- [Docker](https://github.com/coder/coder/tree/main/examples/templates/docker-devcontainer)
+- [Kubernetes](https://github.com/coder/coder/tree/main/examples/templates/kubernetes-devcontainer)
+- [AWS VM](https://github.com/coder/coder/tree/main/examples/templates/aws-devcontainer)
+- [GCP VM](https://github.com/coder/coder/tree/main/examples/templates/gcp-devcontainer)
 
 ## Requirements
 
