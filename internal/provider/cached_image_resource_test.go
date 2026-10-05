@@ -16,7 +16,7 @@ var testEnvValue = `bar
 baz`
 
 func TestAccCachedImageResource(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Minute)
 	defer cancel()
 
 	for _, tc := range []struct {

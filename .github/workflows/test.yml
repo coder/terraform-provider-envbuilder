@@ -32,7 +32,10 @@ jobs:
       - name: Run linters
         uses: golangci/golangci-lint-action@2e788936b09dd82dc280e845628a40d2ba6b204c # v6.3.1
         with:
-          version: latest
+          # Prebuilt v1 binaries are built with Go 1.24 and refuse go.mod
+          # files targeting newer Go, so build golangci-lint with the job's Go.
+          version: v1.64.8
+          install-mode: goinstall
 
   generate:
     runs-on: ubuntu-latest
