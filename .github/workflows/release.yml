@@ -6,32 +6,15 @@ on:
       - "v*"
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   goreleaser:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-      - name: Unshallow
-        run: git fetch --prune --unshallow
-      - name: Setup Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: 1.22.4
-      - name: Import GPG Key
-        id: import_gpg
-        uses: crazy-max/ghaction-import-gpg@v6.2.0
-        with:
-          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
-          passphrase: ${{ secrets.GPG_PASSPHRASE }}
-      - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v6.0.0
-        with:
-          version: latest
-          args: release --clean
-        env:
-          GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
-          # GitHub sets this automatically
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    # coder/terraform-provider-coder holds the one copy of the steps that sign a Coder provider
+    # release. coder/gcp only lets main's copy act as the signer, so a tag chooses the commit to
+    # release, but not the steps that sign it. It refuses to release unless the Cloud KMS key
+    # matches .github/release-signing-key.asc, the key the Terraform Registry has.
+    uses: coder/terraform-provider-coder/.github/workflows/release-sign.yml@main # zizmor: ignore[unpinned-uses]
+    permissions:
+      contents: write # create the GitHub release and upload its assets
+      id-token: write # workload identity federation to the Cloud KMS signing key
